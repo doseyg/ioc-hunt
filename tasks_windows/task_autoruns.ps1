@@ -26,15 +26,6 @@ $baseDir = "C:\Users\user\Desktop\GatherHashes\WinRM"
 $remote_drive = "c"
 $remote_path = "c:\"
 　
-$md5 = {    param($fileName);
-            ## Calculate the md5 hash value
-            $MD5csp = new-object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider
-            $hash = [System.BitConverter]::ToString($MD5csp.ComputeHash([System.IO.File]::ReadAllBytes($fileName)))
-            ## Remove - characters from hash value
-            $hash = %{$hash -replace "-",""}
-            $hash
-}
-　
 　
 if ($sqlOutput){    
     ## This is antiquated. The best way to get data into the database is use SQL output on the HTTP Listener    
@@ -63,9 +54,11 @@ if ($autorunsc) {
 ## Run the autorunsc command    
 if ($autorunsc_available)
 {
-	$autoruns = [xml](Invoke-Command -Computer $computerName -ScriptBlock { c:\autorunsc.exe -x -a } -ArgumentList $processID ) 
+	$autoruns = [xml](Invoke-Command -Computer $computerName -ScriptBlock { c:\autorunsc.exe -x -nobanner /accepteula -h } ) 
 }
-　
+else {
+	Write-Host "autoruns did not run on $computerName"
+}
 　
 　
 ## for each autorun, identify relevant attributes, scan, hash, and output
@@ -73,14 +66,12 @@ if ($autorunsc_available)
 foreach ($item in $autoruns.autoruns.item) {
 	$location = $item.location
 	$launchstring = $item.launchstring
-	$itenName = $item.itemname
+	$itemname = $item.itemname
 	$filename = $item.imagepath
-        $hash = ''        
+    $hash = $item.md5hash
 　
-        if($filename){
-            $hash = Invoke-Command -Computer $computerName -ScriptBlock $md5 -ArgumentList $fileName
-        }       
-        $output = "$computername,$processname,$processID,$filename,$fileversion,$description,$product,$hash,$autorunsc_result`n"
+      
+        $output = "$computername,$itemname,$launchstring,$filename,$location,$hash`n"
           
         ## Output to local CSV file    
         if($txtOutput){ Add-Content $txtOutput $output }    
@@ -93,7 +84,7 @@ foreach ($item in $autoruns.autoruns.item) {
         }    
         ## Output to a database    
         if($sqlOutput){        
-            $cmd.commandtext = "INSERT INTO processes (hostname,processname,processID,filename,fileversion,description,product,md5,autorunsc_result) VALUES('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}')" -f $computername,$processname,$processID,$filename,$fileversion,$description,$product,$hash,[string]$autorunsc_result        
+            $cmd.commandtext = "INSERT INTO processes (hostname,itemname,launchstring,filename,location,md5) VALUES('{0}','{1}','{2}','{3}','{4}','{5}')" -f $computername,$itemname,$launchstring,$filename,$location,$hash
             $cmd.executenonquery()    
         }    
         if($txtoutput -or $httpOutput -or $sqlOutput){}    
