@@ -84,7 +84,7 @@ foreach ($item in $autoruns.autoruns.item) {
         }    
         ## Output to a database    
         if($sqlOutput){        
-            $cmd.commandtext = "INSERT INTO processes (hostname,itemname,launchstring,filename,location,md5) VALUES('{0}','{1}','{2}','{3}','{4}','{5}')" -f $computername,$itemname,$launchstring,$filename,$location,$hash
+            $cmd.commandtext = "INSERT INTO autoruns (hostname,itemname,launchstring,filename,location,md5) VALUES('{0}','{1}','{2}','{3}','{4}','{5}')" -f $computername,$itemname,$launchstring,$filename,$location,$hash
             $cmd.executenonquery()    
         }    
         if($txtoutput -or $httpOutput -or $sqlOutput){}    
