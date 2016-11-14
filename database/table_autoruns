@@ -1,0 +1,36 @@
+USE [ioc-hunt]
+GO
+
+/****** Object:  Table [dbo].[autoruns]  ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+SET ANSI_PADDING ON
+GO
+
+CREATE TABLE [dbo].[autoruns](
+	[ID] [uniqueidentifier] NOT NULL,
+	[datetime] [datetime] NOT NULL,
+	[hostname] [varchar](255) NOT NULL,
+	[itemname] [varchar](255) NOT NULL,
+	[launchstring] [nvarchar](max) NOT NULL,
+	[filename] [nvarchar](max) NOT NULL,
+	[location] [nvarchar](max) NOT NULL,
+	[md5] [varchar](32) NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+ALTER TABLE [dbo].[autoruns] ADD  CONSTRAINT [DF_autoruns_ID]  DEFAULT (newsequentialid()) FOR [ID]
+GO
+
+ALTER TABLE [dbo].[autoruns] ADD  CONSTRAINT [DF_autoruns_datetime]  DEFAULT (getdate()) FOR [datetime]
+GO
+
+　
