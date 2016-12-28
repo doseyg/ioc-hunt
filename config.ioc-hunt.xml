@@ -1,0 +1,1 @@
+<?xml version="1.0"?><Settings> <Global>  <sqlConnectString>Data Source=tcp:10.1.10.1;Database=IOC-hunt;Integrated Security=false;UID=hash_user;Password=password;</sqlConnectString> </Global> <task_hash_files>  <filePath>C:\</filePath>  <fileSize>15000000</fileSize> </task_hash_files></Settings>
