@@ -11,7 +11,8 @@ if (Get-Module -ListAvailable -Name ActiveDirectory) {
 else {
 	write-host "Missing ActiveDirectory Module.";
 	write-host "Please install the Active Directory Modules for Windows Powershell from the Remote Server Admin Tools";
-	exit;
+	#Stop-Transcript;
+	#exit;
 }
 
 ## Figure out the current working directory
@@ -24,17 +25,19 @@ Start-Transcript -path "$cwd\log.$date.txt"
 
 if($task){}
 else {
-	write-host "You must specify a task to run. ";
-	$availableTasks = get-childitem -recurse -name "$cwd\tasks_windows";
-	#$availableTasks += get-chilitem -recurse -name $cwd\tasks_linux
-	write-host "Available tasks are $availableTasks ";
+	write-host "You must specify a task to run with -task <task_name>. ";
+	$availableTasks = get-childitem -recurse -name "$cwd\tasks\"  | where { ! $_.PSIsContainer };
+	write-host "Available tasks are:";
+	foreach ($availableTask in $availableTasks) {write-host "`t $availableTask"};
+	Stop-Transcript;
+	exit;
 }
 
 
 ## Check to ensure the remote script exists for copying
 if (Test-Path "$cwd\$task.ps1"){}
 else{
-	write-host "Missing $task from working directory: Exiting";
+	write-host "Missing task $task from tasks directory: Exiting";
 	Stop-Transcript;
 	exit;
 }
