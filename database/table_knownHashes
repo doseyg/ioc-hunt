@@ -1,7 +1,7 @@
 USE [ioc-hunt]
 GO
 
-/****** Object:  Table [dbo].[malwareHashes]  ******/
+/****** Object:  Table [dbo].[knownHashes]  ******/
 SET ANSI_NULLS ON
 GO
 
@@ -11,7 +11,7 @@ GO
 SET ANSI_PADDING ON
 GO
 
-CREATE TABLE [dbo].[malwareHashes](
+CREATE TABLE [dbo].[knownHashes](
 	[ID] [uniqueidentifier] NOT NULL,
 	[md5] [varchar](32) NOT NULL,
 	[source] [nvarchar](1024) NULL,
@@ -23,7 +23,7 @@ GO
 SET ANSI_PADDING OFF
 GO
 
-ALTER TABLE [dbo].[malwareHashes] ADD  CONSTRAINT [DF_malwareHashes_ID]  DEFAULT (newsequentialid()) FOR [ID]
+ALTER TABLE [dbo].[knownHashes] ADD  CONSTRAINT [DF_knownHashes_ID]  DEFAULT (newsequentialid()) FOR [ID]
 GO
 
 　
