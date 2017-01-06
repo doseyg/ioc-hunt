@@ -11,8 +11,13 @@
  <Yara>
 	<ruleFile>rules.yar</ruleFile>
  </Yara>
- <task_hash_files>
-	<filePath>C:\</filePath>
-	<maxFileSize>15000000</maxFileSize>
- </task_hash_files>
+ <Tasks>
+	<Autoruns>
+		<baseDir>C:\</baseDir>
+	</Autoruns>
+	<hash_files>
+		<filePath>C:\</filePath>
+		<maxFileSize>15000000</maxFileSize>
+	</hash_files>
+ </Tasks>
 </Settings>

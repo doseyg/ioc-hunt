@@ -4,12 +4,13 @@ $type = "malicious"
 $first_hashset = 0
 $last_hashset = 270
 
+## Get configuration from XML file
+[xml]$Config = Get-Content "config.ioc-hunt.xml"
+
 
 $conn = New-Object System.Data.SqlClient.SqlConnection
-####################################################
-## ----! Change your database settings here !---- ##
-####################################################
-$conn.ConnectionString = "Data Source=tcp:IP;Database=HashDB;Integrated Security=false;UID=hash_user;Password=password;"
+#$conn.ConnectionString = "Data Source=tcp:IP;Database=HashDB;Integrated Security=false;UID=hash_user;Password=password;"
+$conn.ConnectionString = $Config.Settings.Global.SqlConnectionString
 $conn.open()
 $cmd = New-Object System.Data.SqlClient.SqlCommand
 $cmd.connection = $conn

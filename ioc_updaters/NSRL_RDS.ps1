@@ -3,13 +3,12 @@ Write-host "This script will read the NSRLFile.txt hash set into the database"
 
 $source = "NSRL RDS 2.55"
 $type = ""
-
+## Get configuration from XML file
+[xml]$Config = Get-Content "config.ioc-hunt.xml"
 
 $conn = New-Object System.Data.SqlClient.SqlConnection
-####################################################
-## ----! Change your database settings here !---- ##
-####################################################
-$conn.ConnectionString = "DataSource=tcp:10.1.10.1;Database=HashDB;IntegratedSecurity=false;UID=hash_user;Password=password;"
+#$conn.ConnectionString = "DataSource=tcp:10.1.10.1;Database=HashDB;IntegratedSecurity=false;UID=hash_user;Password=password;"
+$conn.ConnectionString = $Config.Settings.Global.SqlConnectionString
 $conn.open()
 $cmd = New-Object System.Data.SqlClient.SqlCommand
 $cmd.connection = $conn

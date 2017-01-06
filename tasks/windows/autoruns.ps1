@@ -27,15 +27,11 @@ $remote_drive = "c"
 $remote_path = "c:\"
 　
 　
-if ($sqlOutput){    
-    ## This is antiquated. The best way to get data into the database is use SQL output on the HTTP Listener    
-    ## You can still configure this if you want: you will need to configure the SQL string below.    
+if ($sqlOutput){     
     ## Setup a database connection     
     $conn = New-Object System.Data.SqlClient.SqlConnection    
-    ####################################################    
-    ## ----! Change your database settings here !---- ##    
-    ####################################################    
-    $conn.ConnectionString = "Data Source=tcp:IP;Database=HashDB;Integrated Security=false;UID=hash_user;Password=PASSWORD;"
+    #$conn.ConnectionString = "Data Source=tcp:IP;Database=HashDB;Integrated Security=false;UID=hash_user;Password=PASSWORD;"
+	$conn.open()        $cmd = New-Object System.Data.SqlClient.SqlCommand
     $conn.open()    
     $cmd = New-Object System.Data.SqlClient.SqlCommand    
     $cmd.connection = $conn
@@ -69,26 +65,25 @@ foreach ($item in $autoruns.autoruns.item) {
 	$itemname = $item.itemname
 	$filename = $item.imagepath
     $hash = $item.md5hash
-　
-      
-        $output = "$computername,$itemname,$launchstring,$filename,$location,$hash`n"
-          
-        ## Output to local CSV file    
-        if($txtOutput){ Add-Content $txtOutput $output }    
-        ## Ouput to HTTP    
-        if ($httpOutput){        
-            #Invoke-WebRequest "$httpOutput`?task_process_autorunsc=$output"        
-            $urloutput =  [System.Convert]::ToBase64String([System.Text.Encoding]::UNICODE.GetBytes($output))        
-            $request = [System.Net.WebRequest]::Create("http://$httpOutput/`?task_process_scan=$urloutput");         
-            $resp = $request.GetResponse();     
-        }    
-        ## Output to a database    
-        if($sqlOutput){        
-            $cmd.commandtext = "INSERT INTO autoruns (hostname,itemname,launchstring,filename,location,md5) VALUES('{0}','{1}','{2}','{3}','{4}','{5}')" -f $computername,$itemname,$launchstring,$filename,$location,$hash
-            $cmd.executenonquery()    
-        }    
-        if($txtoutput -or $httpOutput -or $sqlOutput){}    
-        else { write-host $output }
+　      
+	$output = "$computername,$itemname,$launchstring,$filename,$location,$hash`n"
+	  
+	## Output to local CSV file    
+	if($txtOutput){ Add-Content $txtOutput $output }    
+	## Ouput to HTTP    
+	if ($httpOutput){        
+		#Invoke-WebRequest "$httpOutput`?task_process_autorunsc=$output"        
+		$urloutput =  [System.Convert]::ToBase64String([System.Text.Encoding]::UNICODE.GetBytes($output))        
+		$request = [System.Net.WebRequest]::Create("http://$httpOutput/`?task_process_scan=$urloutput");         
+		$resp = $request.GetResponse();     
+	}    
+	## Output to a database    
+	if($sqlOutput){        
+		$cmd.commandtext = "INSERT INTO autoruns (hostname,itemname,launchstring,filename,location,md5) VALUES('{0}','{1}','{2}','{3}','{4}','{5}')" -f $computername,$itemname,$launchstring,$filename,$location,$hash
+		$cmd.executenonquery()    
+	}    
+	if($txtoutput -or $httpOutput -or $sqlOutput){}    
+	else { write-host $output }
 }
         
 if($sqlOutput){   
