@@ -1,0 +1,1 @@
+This folder is where you put things like yara.exe, yara rules files, and autorunsc.exe

@@ -1,8 +1,20 @@
-### Glen Dosey
-## Jan 2 2017
+###############################################################
+## Glen Dosey <doseyg@r-networks.net>
+## January 22 2017
+## 
+## 
 ## 
 
-Param( [string]$task )
+Param( 
+	[string]$task,
+	[string]$remote_basedir = '\windows\temp\',
+	[string]$txtOutput,
+	[string]$txtOutputFile,
+	[string]$httpOutput,
+	[string]$httpOutputUrl,
+	[string]$sqlOutput,
+	[string]$sqlConnectString
+)
 
 ## You must have "Active Directory Modules for Windows Powershell" from Remote Server Admin Tools installed on the workstation running this 
 if (Get-Module -ListAvailable -Name ActiveDirectory) {
@@ -35,7 +47,7 @@ else {
 
 
 ## Check to ensure the remote script exists for copying
-if (Test-Path "$cwd\$task.ps1"){}
+if (Test-Path "$cwd\tasks\$task"){}
 else{
 	write-host "Missing task $task from tasks directory: Exiting";
 	Stop-Transcript;
@@ -61,17 +73,25 @@ else{
 
 ## The job to copy and run the script on each remote host, called from below
 $perHostJob = {
-	param($hostname,$cwd)
-    try {  ## use these if ps-remoting is not enabled
-		Copy-Item "$cwd\processes.ps1" -Destination \\$hostname\c`$\processes.ps1 -force
-		Copy-Item "$cwd\yara64.exe" -Destination \\$hostname\c`$\yara64.exe -force
-		Copy-Item "$cwd\rules.yar" -Destination \\$hostname\c`$\rules.yar -force
+	param($hostname,$cwd,$remote_basedir,$task,$txtOutputFile,$sqlConnectString,$httpOutputUrl)
+	#write-host "Checking dependencies for task $task"
+	$remote_task = $task.split('\')[-1]
+	$dependencies = Invoke-Expression "$cwd\tasks\$task -dependencies"
+	try {  ## use these if ps-remoting is not enabled
+		if($dependencies){
+			foreach ($dependency in $dependencies) {
+				#write-host "Copying $dependency to $remote_basedir on $hostname as dependency for $task $remote_task"
+				Copy-Item "$cwd\dependencies\$dependency" -Destination "\\$hostname\c`$\$remote_basedir\$dependency" -force
+			}
+		}
+		#write-host "Copying $task to $hostname $remote_basedir"
+		Copy-Item "$cwd\tasks\$task" -Destination \\$hostname\c`$\$remote_basedir\$remote_task -force
 		#wmic /NODE:"$hostname" process call create "powershell set-executionpolicy unrestricted" 2> $null
 		#invoke-wmimethod win32_process -name create -argumentlist "powershell set-executionpolicy unrestricted" -Computername "$hostname"
 		write-host "$hostname is online: running" -foregroundcolor "green"
 		Start-Sleep 15
 		#wmic /NODE:"$hostname" process call create "powershell C:\gatherhashes.ps1" 2> $null
-		invoke-wmimethod win32_process -name create -argumentlist "powershell -ExecutionPolicy Bypass C:\processes.ps1" -Computername "$hostname"
+		invoke-wmimethod win32_process -name create -argumentlist "powershell -ExecutionPolicy Bypass C:\$remote_basedir\$remote_task -txtOutputFile $txtOutput -sqlConnectString $sqlConnectString -httpOutputUrl $httpOutputUrl"
 		## If ps remoting was enabled we could use these instead of above
 		#Invoke-Command -computername $hostname -scriptblock {set-executionpolicy unrestricted}
 		#Invoke-Command -computername $hostname -scriptblock { "c:\temp\gatherhashes.ps1" }
@@ -86,7 +106,7 @@ $perHostJob = {
 		}
 	}
 }
- 
+
 ## Loop through every host, creating a seperate job per host to copy and execute the script
 foreach ($hostname in $hostnames){
 	if ($completed -contains $hostname) {
@@ -98,34 +118,34 @@ foreach ($hostname in $hostnames){
 		if ($hostname -like '*-*-*' ) { }
 		else {
 			write-host "$hostname" -foregroundcolor "magenta"
-			Start-Job $perHostJob -ArgumentList $hostname, $cwd
+			Start-Job $perHostJob -ArgumentList $hostname, $cwd, $remote_basedir, $task, $txtOutputFile, $sqlConnectString, $httpOutputUrl
 			$count++
 			## You can throttle performance here by adjusting the number of hosts started in a given amount of time. The below is 50 hosts every 300 seconds
 			if ($count -gt 25) {
-			write-host "Sleeping for 300 seconds after trying 50 hosts..."
-			$sleepcount = 0
-			$count = 0
-			while ($sleepcount -lt 30) {
-				$results = Get-Job -State "Completed" | Receive-Job 2>&1
-				if ($results) { write-host "$results`n" -foregroundcolor "gray" }
-				Get-Job -state "Completed" | remove-job
-				Get-Job -state "Failed" | remove-job
-				Start-Sleep 1
-				$sleepcount++
-				write-host "`b+" -NoNewLine
-				Start-Sleep 1
-				$sleepcount++
-				write-host "`b-" -NoNewLine
+				write-host "Sleeping for 300 seconds after trying 50 hosts..."
+				$sleepcount = 0
+				$count = 0
+				while ($sleepcount -lt 30) {
+					$results = Get-Job -State "Completed" | Receive-Job 2>&1
+					if ($results) { write-host "$results`n" -foregroundcolor "gray" }
+					Get-Job -state "Completed" | remove-job
+					Get-Job -state "Failed" | remove-job
+					Start-Sleep 1
+					$sleepcount++
+					write-host "`b+" -NoNewLine
+					Start-Sleep 1
+					$sleepcount++
+					write-host "`b-" -NoNewLine
+				}
 			}
 		}
 	}
-  }
 }
- 
+
 ## Display output from all completed jobs
 $results = Get-Job | Receive-Job 2>&1
 write-host "`n $results" -foregroundcolor "darkblue"
- 
+
 ## Wait 120 seconds for all jobs to complete
 write-host "Waiting up to 2 minutes for all jobs to complete... +" -NoNewLine
 $count=1
@@ -137,12 +157,12 @@ While (Get-Job -State "Running") {
 	 $count++
 	 if($count -gt 61){break}
 }
- 
+
 ## Display output from any completed jobs
 write-host "`r`n"
 $results = Get-Job | Receive-Job 2>&1
 write-host "$results" -foregroundcolor "darkblue"
- 
+
 ## Cleanup and kill any local jobs (this does not stop scripts running on the remote systems)
 
 write-host "Sleeping for 10 seconds, then killing the below left-over jobs. CTRL-C to cancel."
@@ -151,5 +171,5 @@ Start-Sleep 10
 write-host "Forcefully killing all local jobs now (remote hashing will continue)"
 Remove-Job -force *
 write-host "Done. "
- 
+
 Stop-Transcript

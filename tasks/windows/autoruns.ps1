@@ -1,8 +1,9 @@
 ###############################################################
-## Glen Dosey## October 24 2016
+## Glen Dosey <doseyg@r-networks.net>
+## October 24 2016
 ## 
 ## This is for powershell v2 on Windows 7,8 and 10 and should work out of the box. 
-## You may need to set the execution policy to unrestricted with the command 'powershell set-executionpolicy unrestricted' before running this script## Output is to CLI unless HTTP,Text file, or SQL are specified.
+## Output is to CLI unless HTTP,Text file, or SQL are specified.
 #################################################################
 
 Param(
@@ -16,7 +17,7 @@ Param(
 	[switch]$dependencies,
     [switch]$cleanup
 )
- 
+
 ## setup some variables
 #$arch = Invoke-Command -Computer $computerName -ScriptBlock { Get-WmiObject win32_processor -property AddressWidth | Select -First 1 AddressWidth -ExpandProperty AddressWidth}
 $arch = Get-WmiObject win32_processor -property AddressWidth | Select -First 1 AddressWidth -ExpandProperty AddressWidth
@@ -28,7 +29,8 @@ $cwd = Convert-Path "."
 #$remote_path = "c:\"
 
 if ($dependencies) {
-	write-host "autorunsc.exe"
+	#write-host "autorunsc.exe"
+	return "autorunsc.exe"
 	exit;
 }
 
@@ -76,7 +78,7 @@ foreach ($item in $autoruns.autoruns.item) {
 	$itemname = $item.itemname
 	$filename = $item.imagepath
     $hash = $item.md5hash
-
+	
 	$output = "$computername,$itemname,$launchstring,$filename,$location,$hash`n"
 	  
 	## Output to local CSV file    
