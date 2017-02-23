@@ -71,10 +71,10 @@ else {
 if ($processName) { $processes = Get-Process -Name $processName }
 elseif ($processId)  { $processes =  Get-Process -Id $processId }
 else { $processes =  Get-Process }
-exit;
+
 ## for each process, identify relevant attributes, hash it, and output
 foreach ($process in $processes) {
-	#$filename = $process.Path
+	$filename = $process.Path
 	$processID = $process.Id
 	#$fileversion = $process.fileversion
 	$processname = $process.name
@@ -85,14 +85,14 @@ foreach ($process in $processes) {
 	## Run the Yara command
 	if ($yara_available){
 		#$yara_result = Invoke-Command -Computer $computerName -ScriptBlock { param($processID); c:\yara.exe -s c:\rules.yar $processID } -ArgumentList $processID
-		$yara_result = c:\yara.exe -s c:\rules.yar $processID
+		$yara_result = Invoke-Expression ("$cwd\yara.exe -s $cwd\rules.yar $processID")
 	}
 	
 	if($filename){
 		## Calculate the md5 hash value
-		#$hash = [System.BitConverter]::ToString($md5.ComputeHash([System.IO.File]::ReadAllBytes($fileName)))
+		$hash = [System.BitConverter]::ToString($md5.ComputeHash([System.IO.File]::ReadAllBytes($fileName)))
 		## Remove - characters from hash value
-		#$hash = %{$hash -replace "-",""
+		$hash = %{$hash -replace "-",""}
 	}
 	$output = "$computername,$processname,$processID,$filename,$fileversion,$description,$product,$hash,$yara_result`n"
 	## write to the local CSV file

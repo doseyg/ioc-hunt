@@ -76,11 +76,11 @@ $perHostJob = {
 	param($hostname,$cwd,$remote_basedir,$task,$txtOutputFile,$sqlConnectString,$httpOutputUrl)
 	#write-host "Checking dependencies for task $task"
 	$remote_task = $task.split('\')[-1]
-	$dependencies = Invoke-Expression "$cwd\tasks\$task -dependencies"
+	$dependencies = (Invoke-Expression "$cwd\tasks\$task -dependencies").split(",")
 	try {  ## use these if ps-remoting is not enabled
 		if($dependencies){
 			foreach ($dependency in $dependencies) {
-				#write-host "Copying $dependency to $remote_basedir on $hostname as dependency for $task $remote_task"
+				write-host "Copying $dependency to $remote_basedir on $hostname as dependency for $task $remote_task"
 				Copy-Item "$cwd\dependencies\$dependency" -Destination "\\$hostname\c`$\$remote_basedir\$dependency" -force
 			}
 		}
