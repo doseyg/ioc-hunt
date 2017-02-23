@@ -34,7 +34,7 @@ $md5 = new-object -TypeName System.Security.Cryptography.MD5CryptoServiceProvide
 #$remote_path = "c:\"
 
 if ($dependencies) {
-	return "yara.exe,yara.rules"
+	return "yara.exe,rules.yar"
 	exit;
 }
 
@@ -55,12 +55,11 @@ if ( (Test-Path "$cwd\yara.exe") -and (Test-Path "$cwd\rules.yar") ) {
 	#copy-Item "$cwd\yara$arch.exe" "\\$computerName\c`$\yara.exe"
 	#copy-Item "$cwd\rules$arch.yar" "\\$computerName\c`$\rules.yar"
 	#$yara_available = Invoke-Command -Computer $computerName -ScriptBlock { param($remotepath); Test-Path "$remote_path\yara.exe","$remote_path\rules.yar" } -ArgumentList $remotepath
-	write-host "Apparently either $cwd\yara.exe or $cwd\rules.yar exist"
 	$yara_available = 'TRUE'
 }
 else {
 	$yara_available = 'FALSE' 
-	Write-Host "yara.exe or the yara.rules file is not available in $cwd, exiting."; 
+	Write-Host "yara.exe or the rules.yar file is not available in $cwd, exiting."; 
 	exit; 
 }
 
