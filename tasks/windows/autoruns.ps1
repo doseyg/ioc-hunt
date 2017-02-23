@@ -61,8 +61,8 @@ else {
 ## Run the autorunsc command    
 if ($autorunsc_available)
 {
-	#$autoruns = [xml](Invoke-Command -Computer $computerName -ScriptBlock { c:\autorunsc.exe -x -nobanner /accepteula -h } ) 
-	$autoruns = [xml](Invoke-Command -ScriptBlock { param ($baseDir); Invoke-Expression "$baseDir\autorunsc.exe -x -nobanner /accepteula -h" } -ArgumentList $baseDir )
+	#$autoruns = [xml](Invoke-Command -Computer $computerName-ScriptBlock { param ($baseDir); Invoke-Expression "$baseDir\autorunsc.exe -x -nobanner /accepteula -h" } -ArgumentList $baseDir )
+	$autoruns = [xml](Invoke-Expression "$baseDir\autorunsc.exe -x -nobanner /accepteula -h")
 }
 else {
 	Write-Host "autoruns did not run from $basedir on $computerName, exiting."

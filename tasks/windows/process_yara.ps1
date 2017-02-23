@@ -8,56 +8,71 @@
 #################################################################
 
 Param(
-    [string]$txtOutput,
-    [string]$httpOutput,
-    [string]$sqlOutput,
-    [string]$computerName,
-    [string]$processName,
-    [string]$processId,
-    [switch]$yara,
-    [switch]$cleanup
+	[string]$txtOutput,
+	[string]$txtOutputFile,
+	[string]$httpOutput,
+	[string]$httpOutputUrl,
+	[string]$sqlOutput,
+	[string]$sqlConnectString,
+	[string]$computerName,
+	[string]$processName,
+	[string]$processId,
+	[switch]$dependencies,
+	[switch]$cleanup
 )
 
-              
+ 
 ## setup some variables
-if($computerName){}
-else {
-	$computerName = Get-Content env:computername
-}
+$computerName = Get-Content env:computername
 
-$arch = Invoke-Command -Computer $computerName -ScriptBlock { Get-WmiObject win32_processor -property AddressWidth | Select AddressWidth -ExpandProperty AddressWidth}
+
+#$arch = Invoke-Command -Computer $computerName -ScriptBlock { Get-WmiObject win32_processor -property AddressWidth | Select AddressWidth -ExpandProperty AddressWidth}
+$arch = Invoke-Command -ScriptBlock { Get-WmiObject win32_processor -property AddressWidth | Select AddressWidth -ExpandProperty AddressWidth}
 $cwd = Convert-Path "."
 $md5 = new-object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider
-$remote_drive = "c"
-$remote_path = "c:\"
+#$remote_drive = "c"
+#$remote_path = "c:\"
+
+if ($dependencies) {
+	return "yara.exe,yara.rules"
+	exit;
+}
+
 
 if ($sqlOutput){
-        ## Setup a database connection
-         $conn = New-Object System.Data.SqlClient.SqlConnection
-        ####################################################
-        ## ----! Change your database settings here !---- ##
-        ####################################################
-        $conn.ConnectionString = "Data Source=tcp:IP_HERE;Database=HashDB;Integrated Security=false;UID=hash_user;Password=PASSWORD_HERE;"
-        $conn.open()        $cmd = New-Object System.Data.SqlClient.SqlCommand
-        $cmd.connection = $conn
+	## Setup a database connection
+	$conn = New-Object System.Data.SqlClient.SqlConnection
+	####################################################
+	## ----! Change your database settings here !---- ##
+	####################################################
+	$conn.ConnectionString = "Data Source=tcp:IP_HERE;Database=HashDB;Integrated Security=false;UID=hash_user;Password=PASSWORD_HERE;"
+	$conn.open()
+	$cmd = New-Object System.Data.SqlClient.SqlCommand
+	$cmd.connection = $conn
 }
 ## Determine if Yara is available.
-if ($yara) {
-	if ( Test-Path "$cwd\yara$arch.exe","$cwd\rules.yar") {
-		copy-Item "$cwd\yara$arch.exe" "\\$computerName\c`$\yara.exe"
-		copy-Item "$cwd\rules$arch.yar" "\\$computerName\c`$\rules.yar"
-		$yara_available = Invoke-Command -Computer $computerName -ScriptBlock { param($remotepath); Test-Path "$remote_path\yara.exe","$remote_path\rules.yar" } -ArgumentList $remotepath
-	}
-	else {
-		$yara_available = 'FALSE' 
-	}
-}            
+if ( (Test-Path "$cwd\yara.exe") -and (Test-Path "$cwd\rules.yar") ) {
+	#copy-Item "$cwd\yara$arch.exe" "\\$computerName\c`$\yara.exe"
+	#copy-Item "$cwd\rules$arch.yar" "\\$computerName\c`$\rules.yar"
+	#$yara_available = Invoke-Command -Computer $computerName -ScriptBlock { param($remotepath); Test-Path "$remote_path\yara.exe","$remote_path\rules.yar" } -ArgumentList $remotepath
+	write-host "Apparently either $cwd\yara.exe or $cwd\rules.yar exist"
+	$yara_available = 'TRUE'
+}
+else {
+	$yara_available = 'FALSE' 
+	Write-Host "yara.exe or the yara.rules file is not available in $cwd, exiting."; 
+	exit; 
+}
 
 ## Get a list of running processes
-if     ($processName) { $processes = Invoke-Command -Computer $computerName -ScriptBlock { param($processName);Get-Process -Name $processName } -ArgumentList $processName }
-elseif ($processId)   { $processes = Invoke-Command -Computer $computerName -ScriptBlock { param($processId); Get-Process -Id $processId } -ArgumentList $processId }
-else                  { $processes = Invoke-Command -Computer $computerName -ScriptBlock { Get-Process } }
+#if ($processName) { $processes = Invoke-Command -Computer $computerName -ScriptBlock { param($processName);Get-Process -Name $processName } -ArgumentList $processName }
+#elseif ($processId)� { $processes = Invoke-Command -Computer $computerName -ScriptBlock { param($processId); Get-Process -Id $processId } -ArgumentList $processId }
+#else { $processes = Invoke-Command -Computer $computerName -ScriptBlock { Get-Process } }
 
+if ($processName) { $processes = Get-Process -Name $processName }
+elseif ($processId)� { $processes =  Get-Process -Id $processId }
+else { $processes =  Get-Process }
+exit;
 ## for each process, identify relevant attributes, hash it, and output
 foreach ($process in $processes) {
 	#$filename = $process.Path
@@ -70,7 +85,8 @@ foreach ($process in $processes) {
 	
 	## Run the Yara command
 	if ($yara_available){
-		$yara_result = Invoke-Command -Computer $computerName -ScriptBlock { param($processID); c:\yara.exe -s c:\rules.yar $processID } -ArgumentList $processID
+		#$yara_result = Invoke-Command -Computer $computerName -ScriptBlock { param($processID); c:\yara.exe -s c:\rules.yar $processID } -ArgumentList $processID
+		$yara_result = c:\yara.exe -s c:\rules.yar $processID
 	}
 	
 	if($filename){
@@ -108,7 +124,7 @@ if($sqlOutput){
 #set-executionPolicy restricted
 ## Delete this file because it contains a (mostly useless) database username and password
 if($cleanup){
-    remove-Item "$cwd\yara64.exe"
+	remove-Item "$cwd\yara64.exe"
 	remove-Item "$cwd\yara32.exe"
 	remove-Item "$cwd\rules.yar"
 	remove-Item "$cwd\task_process_scan.ps1"
