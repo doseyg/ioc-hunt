@@ -15,6 +15,7 @@ Param(
 	[string]$processName,
 	[string]$processId,
 	[switch]$dependencies,
+	[switch]$yara,
 	[switch]$cleanup
 )
 
@@ -22,53 +23,56 @@ Param(
 if($txtOutputFile -eq 'FALSE'){$txtOutputFile = $null}
 if($httpOutputUrl -eq 'FALSE'){$httpOutputUrl = $null}
 if($sqlConnectString -eq 'FALSE'){$sqlConnectString = $null}
- 
-## setup some variables
-$computerName = Get-Content env:computername
 
-
-#$arch = Invoke-Command -Computer $computerName -ScriptBlock { Get-WmiObject win32_processor -property AddressWidth | Select AddressWidth -ExpandProperty AddressWidth}
-$arch = Invoke-Command -ScriptBlock { Get-WmiObject win32_processor -property AddressWidth | Select AddressWidth -ExpandProperty AddressWidth}
-$cwd = Convert-Path "."
-$md5 = new-object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider
-#$remote_drive = "c"
-#$remote_path = "c:\"
-
+## If the dependencies switch was supplied, return a comma seperated list of any files needed by this script, and then exit.
 if ($dependencies) {
-	return "yara.exe,rules.yar"
+	if($yara){
+		return "yara.exe,rules.yar"
+	}
+	else {return ""}
 	exit;
 }
 
+## setup some variables
+$computerName = Get-Content env:computername
+$arch = Invoke-Command -ScriptBlock { Get-WmiObject win32_processor -property AddressWidth | Select AddressWidth -ExpandProperty AddressWidth}
+$cwd = Convert-Path "."
+$md5 = new-object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider
+#$remote_computerName = ""
+#$remote_path = "c:\"
+#$remote_arch = Invoke-Command -Computer $computerName -ScriptBlock { Get-WmiObject win32_processor -property AddressWidth | Select AddressWidth -ExpandProperty AddressWidth}
 
+## If a SQL Connection string was supplied, setup the database connection
 if ($sqlConnectString){
-	## Setup a database connection
-	$conn = New-Object System.Data.SqlClient.SqlConnection
-	####################################################
-	## ----! Change your database settings here !---- ##
-	####################################################
-	$conn.ConnectionString = "Data Source=tcp:IP_HERE;Database=HashDB;Integrated Security=false;UID=hash_user;Password=PASSWORD_HERE;"
-	$conn.open()
-	$cmd = New-Object System.Data.SqlClient.SqlCommand
-	$cmd.connection = $conn
+    $conn = New-Object System.Data.SqlClient.SqlConnection
+	$conn.ConnectionString = $sqlConnectString
+    $conn.open()
+    $cmd = New-Object System.Data.SqlClient.SqlCommand
+    $cmd.connection = $conn
 }
+
+
 ## Determine if Yara is available.
-if ( (Test-Path "$cwd\yara.exe") -and (Test-Path "$cwd\rules.yar") ) {
-	#copy-Item "$cwd\yara$arch.exe" "\\$computerName\c`$\yara.exe"
-	#copy-Item "$cwd\rules$arch.yar" "\\$computerName\c`$\rules.yar"
-	#$yara_available = Invoke-Command -Computer $computerName -ScriptBlock { param($remotepath); Test-Path "$remote_path\yara.exe","$remote_path\rules.yar" } -ArgumentList $remotepath
-	$yara_available = 'TRUE'
-}
-else {
-	$yara_available = 'FALSE' 
-	Write-Host "yara.exe or the rules.yar file is not available in $cwd, exiting."; 
-	exit; 
+if($yara){
+	if ( (Test-Path "$cwd\yara.exe") -and (Test-Path "$cwd\rules.yar") ) {
+		#copy-Item "$cwd\yara$arch.exe" "\\$remote_computerName\c`$\yara.exe"
+		#copy-Item "$cwd\rules$arch.yar" "\\$remote_computerName\c`$\rules.yar"
+		#$yara_available = Invoke-Command -Computer $remote_computerName -ScriptBlock { param($remotepath); Test-Path "$remote_path\yara.exe","$remote_path\rules.yar" } -ArgumentList $remotepath
+		$yara_available = 'TRUE'
+	}
+	else {
+		$yara_available = 'FALSE' 
+		Write-Host "yara.exe or the rules.yar file is not available in $cwd, exiting."; 
+		exit; 
+	}
 }
 
 ## Get a list of running processes
-#if ($processName) { $processes = Invoke-Command -Computer $computerName -ScriptBlock { param($processName);Get-Process -Name $processName } -ArgumentList $processName }
-#elseif ($processId)  { $processes = Invoke-Command -Computer $computerName -ScriptBlock { param($processId); Get-Process -Id $processId } -ArgumentList $processId }
-#else { $processes = Invoke-Command -Computer $computerName -ScriptBlock { Get-Process } }
+#if ($processName) { $processes = Invoke-Command -Computer $remote_computerName -ScriptBlock { param($processName);Get-Process -Name $processName } -ArgumentList $processName }
+#elseif ($processId)  { $processes = Invoke-Command -Computer $remote_computerName -ScriptBlock { param($processId); Get-Process -Id $processId } -ArgumentList $processId }
+#else { $processes = Invoke-Command -Computer $remote_computerName -ScriptBlock { Get-Process } }
 
+## Get a list of running processes
 if ($processName) { $processes = Get-Process -Name $processName }
 elseif ($processId)  { $processes =  Get-Process -Id $processId }
 else { $processes =  Get-Process }
@@ -85,7 +89,7 @@ foreach ($process in $processes) {
 	
 	## Run the Yara command
 	if ($yara_available){
-		#$yara_result = Invoke-Command -Computer $computerName -ScriptBlock { param($processID); c:\yara.exe -s c:\rules.yar $processID } -ArgumentList $processID
+		#$yara_result = Invoke-Command -Computer $remote_computerName -ScriptBlock { param($processID); c:\yara.exe -s c:\rules.yar $processID } -ArgumentList $processID
 		$yara_result = Invoke-Expression ("$cwd\yara.exe -s $cwd\rules.yar $processID")
 	}
 	
@@ -97,7 +101,9 @@ foreach ($process in $processes) {
 	}
 	$output = "$computername,$processname,$processID,$filename,$fileversion,$description,$product,$hash,$yara_result`n"
 	## write to the local CSV file
-	if($txtOutputFile){ Add-Content $txtOutputFile $output }
+	if($txtOutputFile){
+		Add-Content $txtOutputFile $output
+	}
 	## Ouput to HTTP
 	if ($httpOutputUrl){
 		#Invoke-WebRequest "$httpOutput?$output"
@@ -114,18 +120,15 @@ foreach ($process in $processes) {
 	else { write-host $output }
  }
  
- 
+ ## Close the database connection
 if($sqlConnectString){
-	## Close the database connection
 	$conn.close()
 }
 
-## Return the execution policy to restricted (if we set it to unrestricted in a seperate script so we could run this powershell script)
-#set-executionPolicy restricted
-## Delete this file because it contains a (mostly useless) database username and password
+## Delete this file and any dependencies if cleanup swicth was supplied
 if($cleanup){
 	remove-Item "$cwd\yara64.exe"
 	remove-Item "$cwd\yara32.exe"
 	remove-Item "$cwd\rules.yar"
-	remove-Item "$cwd\task_process_scan.ps1"
+	remove-Item "$cwd\processes_scan.ps1"
  }

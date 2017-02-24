@@ -13,6 +13,7 @@ Param(
 	[string]$sqlConnectString,
 	[switch]$yara,
 	[switch]$cleanup,
+	[switch]$dependencies,
 	[string]$filePath = "c:\",
 	[string]$maxFileSize = '15000000'
 )
@@ -22,10 +23,7 @@ if($txtOutputFile -eq 'FALSE'){$txtOutputFile = $null}
 if($httpOutputUrl -eq 'FALSE'){$httpOutputUrl = $null}
 if($sqlConnectString -eq 'FALSE'){$sqlConnectString = $null}
 
-$computerName = Get-Content env:computername
-$md5 = new-object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider
-$cwd = Convert-Path "."
-
+## If the dependencies switch was supplied, return a comma seperated list of any files needed by this script, and then exit.
 if ($dependencies) {
 	if($yara){
 		return "yara.exe,rules.yar"
@@ -34,10 +32,14 @@ if ($dependencies) {
 	exit;
 }
 
+## Setup some variables
+$computerName = Get-Content env:computername
+$md5 = new-object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider
+$cwd = Convert-Path "."
+
+## If a SQL Connection string was supplied, setup the database connection
 if ($sqlConnectString){
-	## Setup a database connection
 	$conn = New-Object System.Data.SqlClient.SqlConnection
-	#$conn.ConnectionString = "Data Source=tcp:IP_HERE;Database=HashDB;Integrated Security=false;UID=hash_user;Password=PASSWORD_HERE;"
 	$conn.ConnectionString = $sqlConnectString
 	$conn.open()
 	$cmd = New-Object System.Data.SqlClient.SqlCommand
@@ -75,8 +77,7 @@ $searchResults = (Get-ChildItem -Recurse -Force $filePath -ErrorAction SilentlyC
         -or $_.extension -eq ".ini" `
         -or $_.extension -eq ".bin" ) } )
 
- ## for each file found, determine its length and if less than 15MB, hash it, write to CSV, and insert into database
- 
+## for each file found, determine its length and if less than 15MB, hash it, write to CSV, and insert into database
  foreach ($file in $searchResults) {
      $length = $file.length
      $fileName = $file.fullName
@@ -108,14 +109,13 @@ $searchResults = (Get-ChildItem -Recurse -Force $filePath -ErrorAction SilentlyC
      }
  }
  
+ ## Close the database connection
  if($sqlConnectString){
-	## Close the database connection
 	$conn.close()
  }
  
- ## Return the execution policy to restricted (if we set it to unrestricted in a seperate script so we could run this powershell script)
- #set-executionPolicy restricted
- ## Delete this file because it contains a (mostly useless) database username and password
+
+ ## Delete this script and any dependencies
  if($cleanup){
 	remove-Item "$cwd\yara64.exe"
 	remove-Item "$cwd\yara32.exe"
