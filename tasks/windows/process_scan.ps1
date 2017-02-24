@@ -8,25 +8,38 @@
 #################################################################
 
 Param(
-	[string]$txtOutput,
-	[string]$httpOutput,
-	[string]$sqlOutput,
+	[string]$txtOutputFile,
+	[string]$httpOutputUrl,
+	[string]$sqlConnectString,
 	[string]$processName,
 	[string]$processId,
 	[string]$yara,
 	[string]$cleanup
 )
 
+## Because testing of FALSE with if returns true, set it to $null instead. This is an ugly hack, maybe someday I will have a cleaner solution
+if($txtOutputFile -eq 'FALSE'){$txtOutputFile = $null}
+if($httpOutputUrl -eq 'FALSE'){$httpOutputUrl = $null}
+if($sqlConnectString -eq 'FALSE'){$sqlConnectString = $null}
+
+if ($dependencies) {
+	if($yara){
+		return "yara.exe,rules.yar"
+	}
+	else {return ""}
+	exit;
+}
+
 ## setup some variables
 $computerName = Get-Content env:computername
 $arch = Get-WmiObject win32_processor -property AddressWidth
 $cwd = Convert-Path "."
 $md5 = new-object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider
-if ($sqlOutput){
+if ($sqlConnectString){
 	## Setup a database connection
 	$conn = New-Object System.Data.SqlClient.SqlConnection
 	$conn.ConnectionString = $sqlConnectString
-	#$conn.ConnectionString = "Data Source=tcp:IP_HERE;Database=HashDB;Integrated Security=false;UID=hash_user;Password=PASSWORD_HERE;"    
+	#$conn.ConnectionString = "Data Source=tcp:IP_HERE;Database=HashDB;Integrated Security=false;UID=hash_user;Password=PASSWORD_HERE;"
 	$conn.open()
 	$cmd = New-Object System.Data.SqlClient.SqlCommand
 	$cmd.connection = $conn
@@ -37,26 +50,26 @@ if ($sqlOutput){
 if($yara){
 	$yara64 = Test-Path "$cwd\yara64.exe","$cwd\rules.yar"
 	$yara32 = Test-Path "$cwd\yara32.exe","$cwd\rules.yar"
-	if ($yara64 -eq $True -and $arch -eq '64') { $yara_cmd = "$cwd\yara64.exe" }
-    elseif ($yara32 -eq $True -and $arch -eq '32') { $yara_cmd = "$cwd\yara32.exe" }
-    else { $yara_cmd = '' }
+	if ($yara64 -eq $True -and $arch -eq '64') { $yara_cmd = "$cwd\yara64.exe"}
+	elseif ($yara32 -eq $True -and $arch -eq '32') { $yara_cmd = "$cwd\yara32.exe"}
+	else { $yara_cmd = ''}
 }
 
 ## Get a list of running processes
-if     ($processName) { $processes = Get-Process -Name $processName}
-elseif ($processId)   { $processes = Get-Process -Id $ProcessId}
-else                  { $processes = Get-Process }
+if ($processName) { $processes = Get-Process -Name $processName}
+elseif ($processId){ $processes = Get-Process -Id $ProcessId}
+else { $processes = Get-Process }
 
 ## for each process, identify relevant attributes, hash it, and output
 
 foreach ($process in $processes) {
 	$filename = $process.Path
-	$processID = $process.Id 
+	$processID = $process.Id
 	$fileversion = $process.fileversion
 	$processname = $process.name
 	$product = $process.product
 	$description = $process.description
-	$hash = ''        
+	$hash = ''
 
 	## Run the Yara command    
 	if ($yara_cmd){
@@ -70,26 +83,26 @@ foreach ($process in $processes) {
 	}
 		$output = "$computername,$processname,$processID,$filename,$fileversion,$description,$product,$hash,$yara_result`n"
 		## write to the local CSV file
-		if($txtOutput){
-			Add-Content $txtOutput $output    
+		if($txtOutputFile){
+			Add-Content $txtOutputFile $output
 	}
 		## Ouput to HTTP
-		if ($httpOutput){
+		if ($httpOutputUrl){
 			#Invoke-WebRequest "$httpOutput?$output"
 			$urloutput =  [System.Convert]::ToBase64String([System.Text.Encoding]::UNICODE.GetBytes($output))
 			$request = [System.Net.WebRequest]::Create("http://$httpOutput/`?task_process_scan=$urloutput");
-			$resp = $request.GetResponse();     
-	 }    
+			$resp = $request.GetResponse();
+	 }
 	 ## Insert into a database
-	if($sqlOutput){
+	if($sqlConnectString){
 		$cmd.commandtext = "INSERT INTO processes (hostname,processname,processID,filename,fileversion,description,product,md5,yara_result) VALUES('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}')" -f $computername,$processname,$processID,$filename,$fileversion,$description,$product,$hash,[string]$yara_result
-		$cmd.executenonquery()    
-	 } 
-	if($txtoutput -or $httpOutput -or $sqlOutput){}
+		$cmd.executenonquery()
+	 }
+	if($txtOutputFile -or $httpOutputUrl -or $sqlConnectString){}
 	else { write-host $output }
 }
 
-if($sqlOutput){
+if($sqlConnectString){
 	## Close the database connection
 	$conn.close()
 }

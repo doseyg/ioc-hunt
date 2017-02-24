@@ -7,16 +7,19 @@
 #################################################################
 
 Param(
-	[string]$txtOutput,
 	[string]$txtOutputFile,
-	[string]$httpOutput,
 	[string]$httpOutputUrl,
-	[string]$sqlOutput,
 	[string]$sqlConnectString,
 	[string]$baseDir = 'c:\windows\temp\',
 	[switch]$dependencies,
     [switch]$cleanup
 )
+
+## Because testing of FALSE with if returns true, set it to $null instead. This is an ugly hack, maybe someday I will have a cleaner solution
+if($txtOutputFile -eq 'FALSE'){$txtOutputFile = $null}
+if($httpOutputUrl -eq 'FALSE'){$httpOutputUrl = $null}
+if($sqlConnectString -eq 'FALSE'){$sqlConnectString = $null}
+
 
 ## setup some variables
 #$arch = Invoke-Command -Computer $computerName -ScriptBlock { Get-WmiObject win32_processor -property AddressWidth | Select -First 1 AddressWidth -ExpandProperty AddressWidth}
@@ -34,7 +37,7 @@ if ($dependencies) {
 	exit;
 }
 
-if ($sqlOutput){     
+if ($sqlConnectString){     
     ## Setup a database connection     
     $conn = New-Object System.Data.SqlClient.SqlConnection    
     #$conn.ConnectionString = "Data Source=tcp:IP;Database=HashDB;Integrated Security=false;UID=hash_user;Password=PASSWORD;"
@@ -95,7 +98,7 @@ foreach ($item in $autoruns.autoruns.item) {
 		$cmd.commandtext = "INSERT INTO autoruns (hostname,itemname,launchstring,filename,location,md5) VALUES('{0}','{1}','{2}','{3}','{4}','{5}')" -f $computername,$itemname,$launchstring,$filename,$location,$hash
 		$cmd.executenonquery()    
 	}    
-	if($txtoutput -or $httpOutput -or $sqlOutput){}    
+	if($txtOutputFile -or $httpOutputUrl -or $sqlConnectString){}    
 	else { write-host $output }
 }
 

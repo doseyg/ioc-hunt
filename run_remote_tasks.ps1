@@ -8,12 +8,9 @@
 Param( 
 	[string]$task,
 	[string]$remote_basedir = '\windows\temp\',
-	[string]$txtOutput,
-	[string]$txtOutputFile,
-	[string]$httpOutput,
-	[string]$httpOutputUrl,
-	[string]$sqlOutput,
-	[string]$sqlConnectString
+	[string]$txtOutputFile = 'FALSE',
+	[string]$httpOutputUrl = 'FALSE',
+	[string]$sqlConnectString = 'FALSE'
 )
 
 ## You must have "Active Directory Modules for Windows Powershell" from Remote Server Admin Tools installed on the workstation running this 
@@ -91,7 +88,7 @@ $perHostJob = {
 		write-host "$hostname is online: running" -foregroundcolor "green"
 		Start-Sleep 15
 		#wmic /NODE:"$hostname" process call create "powershell C:\gatherhashes.ps1" 2> $null
-		invoke-wmimethod win32_process -name create -argumentlist "powershell -ExecutionPolicy Bypass C:\$remote_basedir\$remote_task -txtOutputFile $txtOutput -sqlConnectString $sqlConnectString -httpOutputUrl $httpOutputUrl"
+		invoke-wmimethod win32_process -computername $hostname -name create -argumentlist "powershell -ExecutionPolicy Bypass C:\$remote_basedir\$remote_task -txtOutputFile $txtOutput -sqlConnectString $sqlConnectString -httpOutputUrl $httpOutputUrl"
 		## If ps remoting was enabled we could use these instead of above
 		#Invoke-Command -computername $hostname -scriptblock {set-executionpolicy unrestricted}
 		#Invoke-Command -computername $hostname -scriptblock { "c:\temp\gatherhashes.ps1" }

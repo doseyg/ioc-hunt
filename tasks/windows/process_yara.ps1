@@ -8,11 +8,8 @@
 #################################################################
 
 Param(
-	[string]$txtOutput,
 	[string]$txtOutputFile,
-	[string]$httpOutput,
 	[string]$httpOutputUrl,
-	[string]$sqlOutput,
 	[string]$sqlConnectString,
 	[string]$computerName,
 	[string]$processName,
@@ -21,6 +18,10 @@ Param(
 	[switch]$cleanup
 )
 
+## Because testing of FALSE with if returns true, set it to $null instead. This is an ugly hack, maybe someday I will have a cleaner solution
+if($txtOutputFile -eq 'FALSE'){$txtOutputFile = $null}
+if($httpOutputUrl -eq 'FALSE'){$httpOutputUrl = $null}
+if($sqlConnectString -eq 'FALSE'){$sqlConnectString = $null}
  
 ## setup some variables
 $computerName = Get-Content env:computername
@@ -39,7 +40,7 @@ if ($dependencies) {
 }
 
 
-if ($sqlOutput){
+if ($sqlConnectString){
 	## Setup a database connection
 	$conn = New-Object System.Data.SqlClient.SqlConnection
 	####################################################
@@ -96,25 +97,25 @@ foreach ($process in $processes) {
 	}
 	$output = "$computername,$processname,$processID,$filename,$fileversion,$description,$product,$hash,$yara_result`n"
 	## write to the local CSV file
-	if($txtOutput){ Add-Content $txtOutput $output }
+	if($txtOutputFile){ Add-Content $txtOutputFile $output }
 	## Ouput to HTTP
-	if ($httpOutput){
+	if ($httpOutputUrl){
 		#Invoke-WebRequest "$httpOutput?$output"
 		$urloutput =  [System.Convert]::ToBase64String([System.Text.Encoding]::UNICODE.GetBytes($output))
 		$request = [System.Net.WebRequest]::Create("http://$httpOutput/`?task_process_scan=$urloutput");
 		$resp = $request.GetResponse();
 	}
 	## Insert into a database
-	if($sqlOutput){
+	if($sqlConnectString){
 		$cmd.commandtext = "INSERT INTO processes (hostname,processname,processID,filename,fileversion,description,product,md5,yara_result) VALUES('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}')" -f $computername,$processname,$processID,$filename,$fileversion,$description,$product,$hash,[string]$yara_result
 		$cmd.executenonquery()
 	}
-	if($txtoutput -or $httpOutput -or $sqlOutput){}
+	if($txtOutputFile -or $httpOutputUrl -or $sqlConnectString){}
 	else { write-host $output }
  }
  
  
-if($sqlOutput){
+if($sqlConnectString){
 	## Close the database connection
 	$conn.close()
 }
