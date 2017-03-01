@@ -25,7 +25,7 @@ for ($i = $first_hashset; $i -le $last_hashset; $i++) {
     $sr = new-object System.IO.StreamReader $reqstream
     while ($result = $sr.ReadLine()) {
         #echo "$result $source $type"
-        $cmd.commandtext = "INSERT INTO knownHashes (md5,source,type) VALUES('{0}','{1}','{2}')" -f $result,"$source - $set",$type
+        $cmd.commandtext = "INSERT INTO indicators (Hashes_MD5,Source,Type) VALUES('{0}','{1}','{2}')" -f $result,"$source - $set",$type
         $cmd.executenonquery()
     }
     

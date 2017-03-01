@@ -25,7 +25,7 @@ while ($result = $sr.ReadLine()) {
         $lastMD5 = $line.MD5
 
         #write-host $line.MD5 $line.FileName
-        $cmd.commandtext = "INSERT INTO knownHashes (md5,source,type)VALUES('{0}','{1}','{2}')" -f $line.MD5,"$source",$type
+        $cmd.commandtext = "INSERT INTO indicators (Hashes_MD5,Source,Type)VALUES('{0}','{1}','{2}')" -f $line.MD5,"$source",$type
         $cmd.executenonquery()
 }
 

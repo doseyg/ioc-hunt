@@ -100,7 +100,7 @@ $searchResults = (Get-ChildItem -Recurse -Force $filePath -ErrorAction SilentlyC
 		}
 		## Insert into a database
 		if($sqlConnectString){
-			$cmd.commandtext = "INSERT INTO hashes (hostname,filename,md5,size) VALUES('{0}','{1}','{2}','{3}')" -f $computername,$fileName,$hash,$length,[string]$yara_result
+			$cmd.commandtext = "INSERT INTO hashes (Hostname,File_Name,Hashes_MD5,Size_In_Bytes) VALUES('{0}','{1}','{2}','{3}')" -f $computername,$fileName,$hash,$length,[string]$yara_result
 			$cmd.executenonquery()
 		}
 		#If no outputs are defined, write to stdout

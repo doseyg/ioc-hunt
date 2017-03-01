@@ -113,7 +113,7 @@ foreach ($process in $processes) {
 	}
 	## Insert into a database
 	if($sqlConnectString){
-		$cmd.commandtext = "INSERT INTO processes (hostname,processname,processID,filename,fileversion,description,product,md5,yara_result) VALUES('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}')" -f $computername,$processname,$processID,$filename,$fileversion,$description,$product,$hash,[string]$yara_result
+		$cmd.commandtext = "INSERT INTO processes (Hostname,Process_Name,PID,File_Name,fileversion,description,product,Hashes_MD5,yara_result) VALUES('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}')" -f $computername,$processname,$processID,$filename,$fileversion,$description,$product,$hash,[string]$yara_result
 		$cmd.executenonquery()
 	}
 	if($txtOutputFile -or $httpOutputUrl -or $sqlConnectString){}

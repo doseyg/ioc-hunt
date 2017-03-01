@@ -14,14 +14,14 @@ GO
 CREATE TABLE [dbo].[processes](
 	[ID] [uniqueidentifier] NOT NULL,
 	[datetime] [datetime] NOT NULL,
-	[hostname] [varchar](255) NOT NULL,
-	[processname] [varchar](255) NOT NULL,
-	[processid] [varchar](32) NOT NULL,
-	[filename] [nvarchar](max) NOT NULL,
+	[Hostname] [varchar](255) NOT NULL,
+	[Process_Name] [varchar](255) NOT NULL,
+	[PID] [varchar](32) NOT NULL,
+	[File_Name] [nvarchar](max) NOT NULL,
 	[fileversion] [nvarchar](255) NOT NULL,
 	[description] [nvarchar](max) NOT NULL,
 	[product] [nvarchar](max) NOT NULL,
-	[md5] [varchar](32) NULL,
+	[Hashes_MD5] [varchar](32) NULL,
 	[yara_result] [nvarchar](max) NULL
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 

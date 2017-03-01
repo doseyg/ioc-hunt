@@ -33,7 +33,7 @@ foreach($item in $rssFeed.rss.channel.item) {
                 $rssFields.Add($subarray[0].trim(),$subarray[1].trim())
 				$rssFields
         }
-		#$cmd.commandtext = "INSERT INTO knownHashes (md5,source,type)VALUES('{0}','{1}','{2}')" -f $MD5,"$source",$type
+		#$cmd.commandtext = "INSERT INTO indicators (Hashes_MD5,Source,Type)VALUES('{0}','{1}','{2}')" -f $MD5,"$source",$type
 		write-host "$MD5 $source $type"
         #$rssFields
 }
