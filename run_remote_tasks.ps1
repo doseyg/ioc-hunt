@@ -10,18 +10,23 @@ Param(
 	[string]$remote_basedir = '\windows\temp\',
 	[string]$txtOutputFile = 'FALSE',
 	[string]$httpOutputUrl = 'FALSE',
-	[string]$sqlConnectString = 'FALSE'
+	[string]$sqlConnectString = 'FALSE',
+	[switch]$useAD,
+	[switch]$useFile,
+	[switch]$resumeScan
+	[switch]$newScan
 )
 
-## You must have "Active Directory Modules for Windows Powershell" from Remote Server Admin Tools installed on the workstation running this 
-if (Get-Module -ListAvailable -Name ActiveDirectory) {
-	Import-Module ActiveDirectory;
-}
-else {
-	write-host "Missing ActiveDirectory Module.";
-	write-host "Please install the Active Directory Modules for Windows Powershell from the Remote Server Admin Tools";
-	#Stop-Transcript;
-	#exit;
+## You must have "Active Directory Modules for Windows Powershell" from Remote Server Admin Tools installed on the workstation running this
+if($useAD){
+	if (Get-Module -ListAvailable -Name ActiveDirectory) {
+		Import-Module ActiveDirectory;
+	}
+	else {
+		write-host "Missing ActiveDirectory Module.";
+		write-host "Please install the Active Directory Modules for Windows Powershell from the Remote Server Admin Tools";
+		exit;
+	}
 }
 
 ## Figure out the current working directory
@@ -52,20 +57,25 @@ else{
 }
 
 ## Either read hostnames from file, or collect from AD
-if (Test-Path "$cwd\skipped.txt"){
-	write-host "Resuming skipped hosts from previous scan. Delete the skipped.txt file if you want to start a new scan.`n"
-	$hostnames = Get-Content -Path "$cwd\skipped.txt"
-	Move-Item $cwd\skipped.txt $cwd\skipped.$date.txt
+if($resumeScan){}
+	if (Test-Path "$cwd\skipped.txt"){
+		write-host "Resuming skipped hosts from previous scan. Delete the skipped.txt file if you want to start a new scan.`n"
+		$hostnames = Get-Content -Path "$cwd\skipped.txt"
+		Move-Item $cwd\skipped.txt $cwd\skipped.$date.txt
+	}
+	elseif (Test-Path "$cwd\completed.txt"){
+		write-host "Skipping previously completed hosts. Delete the completed.txt file if you want to start a new scan.`n"
+		$completed = Get-Content -Path "$cwd\completed.txt"
+	}
 }
-elseif (Test-Path "$cwd\completed.txt"){
-	write-host "Skipping previously completed hosts. Delete the completed.txt file if you want to start a new scan.`n"
-	$completed = Get-Content -Path "$cwd\completed.txt"
-	$hostnames = Get-ADComputer -Filter 'ObjectClass -eq "Computer"' | Select DNSHostName | ForEach-Object { $_.DNSHostName }
-}
-else{
+if ($useAD) {
 	write-host "Starting a new scan."
 	write-host "Gathering computers from Active Directory`n"
 	$hostnames = Get-ADComputer -Filter 'ObjectClass -eq "Computer"' | Select DNSHostName | ForEach-Object { $_.DNSHostName }
+}
+elseif ($useFile) {
+	write-host "Starting a new scan.`n Reading computers from file computers.txt`n"
+	$hostnames = Get-Content -Path "$cwd\computers.txt"
 }
 
 ## The job to copy and run the script on each remote host, called from below
@@ -81,18 +91,14 @@ $perHostJob = {
 				Copy-Item "$cwd\dependencies\$dependency" -Destination "\\$hostname\c`$\$remote_basedir\$dependency" -force
 			}
 		}
-		#write-host "Copying $task to $hostname $remote_basedir"
 		Copy-Item "$cwd\tasks\$task" -Destination \\$hostname\c`$\$remote_basedir\$remote_task -force
 		#wmic /NODE:"$hostname" process call create "powershell set-executionpolicy unrestricted" 2> $null
-		#invoke-wmimethod win32_process -name create -argumentlist "powershell set-executionpolicy unrestricted" -Computername "$hostname"
 		write-host "$hostname is online: running" -foregroundcolor "green"
+		## We sleep here to allow time for the file copy to complete
 		Start-Sleep 15
-		#wmic /NODE:"$hostname" process call create "powershell C:\gatherhashes.ps1" 2> $null
 		invoke-wmimethod win32_process -computername $hostname -name create -argumentlist "powershell -ExecutionPolicy Bypass C:\$remote_basedir\$remote_task -txtOutputFile $txtOutput -sqlConnectString $sqlConnectString -httpOutputUrl $httpOutputUrl"
 		## If ps remoting was enabled we could use these instead of above
-		#Invoke-Command -computername $hostname -scriptblock {set-executionpolicy unrestricted}
-		#Invoke-Command -computername $hostname -scriptblock { "c:\temp\gatherhashes.ps1" }
-		#Invoke-Command -computername $hostname -filepath "$cwd\gatherhashes.ps1"
+		#Invoke-Command -Computer $hostname -ScriptBlock { param ($cwd); Invoke-Expression "$cwd\tasks\$task" } -ArgumentList $cwd 
 		 Add-Content "$cwd\completed.txt" "$hostname`n "
 	}
 	catch {
