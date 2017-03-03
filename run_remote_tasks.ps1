@@ -8,17 +8,25 @@
 Param( 
 	[string]$task,
 	[string]$remote_basedir = '\windows\temp\',
-	[string]$txtOutputFile = 'FALSE',
-	[string]$httpOutputUrl = 'FALSE',
-	[string]$sqlConnectString = 'FALSE',
-	[switch]$useAD,
-	[switch]$useFile,
-	[switch]$resumeScan
+	[AllowEmptyString()][string]$txtOutputFile = 'FALSE',
+	[AllowEmptyString()][string]$httpOutputUrl = 'FALSE',
+	[AllowEmptyString()][string]$sqlConnectString = 'FALSE',
+	[switch]$syncAD,
+	[switch]$resumeScan,
 	[switch]$newScan
 )
 
+## Get configuration from XML file
+[xml]$Config = Get-Content "config.ioc-hunt.xml"
+
+## If the flag was specified, use the value from the config
+if($txtOutputFile -eq 'FALSE'){$txtOutputFile = $Config.Settings.Global.textOutputFile}
+if($httpOutputUrl -eq 'FALSE'){$httpOutputUrl = $Config.Settings.Global.httpoutputUrl}
+if($sqlConnectString -eq 'FALSE'){$sqlConnectString = $Config.Settings.Global.sqlConnectString}
+
+
 ## You must have "Active Directory Modules for Windows Powershell" from Remote Server Admin Tools installed on the workstation running this
-if($useAD){
+if($syncAD){
 	if (Get-Module -ListAvailable -Name ActiveDirectory) {
 		Import-Module ActiveDirectory;
 	}
@@ -34,8 +42,6 @@ $cwd = Convert-Path "."
 $date = Get-Date -format yyyyMMddHHmmss
 Start-Transcript -path "$cwd\log.$date.txt"
 
-## Get configuration from XML file
-[xml]$Config = Get-Content "config.ioc-hunt.xml"
 
 if($task){}
 else {
@@ -56,27 +62,33 @@ else{
 	exit;
 }
 
-## Either read hostnames from file, or collect from AD
-if($resumeScan){}
-	if (Test-Path "$cwd\skipped.txt"){
-		write-host "Resuming skipped hosts from previous scan. Delete the skipped.txt file if you want to start a new scan.`n"
-		$hostnames = Get-Content -Path "$cwd\skipped.txt"
-		Move-Item $cwd\skipped.txt $cwd\skipped.$date.txt
-	}
-	elseif (Test-Path "$cwd\completed.txt"){
-		write-host "Skipping previously completed hosts. Delete the completed.txt file if you want to start a new scan.`n"
-		$completed = Get-Content -Path "$cwd\completed.txt"
-	}
-}
-if ($useAD) {
+## Read in computers from Active Directory or a text file.
+if ($syncAD) {
 	write-host "Starting a new scan."
 	write-host "Gathering computers from Active Directory`n"
 	$hostnames = Get-ADComputer -Filter 'ObjectClass -eq "Computer"' | Select DNSHostName | ForEach-Object { $_.DNSHostName }
+	Add-Content "$cwd\computers.txt" $hostnames
 }
-elseif ($useFile) {
+else {
 	write-host "Starting a new scan.`n Reading computers from file computers.txt`n"
 	$hostnames = Get-Content -Path "$cwd\computers.txt"
 }
+
+$ignore_hosts = Get-Content -Path "$cwd\computers_ignore.txt"
+
+## Either read hostnames from file, or collect from AD
+if($resumeScan){
+	if (Test-Path "$cwd\computers_skipped.txt"){
+		write-host "Resuming skipped hosts from previous scan. Delete the skipped.txt file if you want to start a new scan.`n"
+		$hostnames = Get-Content -Path "$cwd\computers_skipped.txt"
+		Move-Item $cwd\computers_skipped.txt $cwd\computers_skipped.$date.txt
+	}
+	elseif (Test-Path "$cwd\computers_completed.txt"){
+		write-host "Skipping previously completed hosts. Delete the computers_completed.txt file if you want to start a new scan.`n"
+		$completed = Get-Content -Path "$cwd\computers_completed.txt"
+	}
+}
+
 
 ## The job to copy and run the script on each remote host, called from below
 $perHostJob = {
@@ -95,17 +107,17 @@ $perHostJob = {
 		#wmic /NODE:"$hostname" process call create "powershell set-executionpolicy unrestricted" 2> $null
 		write-host "$hostname is online: running" -foregroundcolor "green"
 		## We sleep here to allow time for the file copy to complete
-		Start-Sleep 15
+		Start-Sleep $Config.Settings.Global.fileCopySleep
 		invoke-wmimethod win32_process -computername $hostname -name create -argumentlist "powershell -ExecutionPolicy Bypass C:\$remote_basedir\$remote_task -txtOutputFile $txtOutput -sqlConnectString $sqlConnectString -httpOutputUrl $httpOutputUrl"
 		## If ps remoting was enabled we could use these instead of above
 		#Invoke-Command -Computer $hostname -ScriptBlock { param ($cwd); Invoke-Expression "$cwd\tasks\$task" } -ArgumentList $cwd 
-		 Add-Content "$cwd\completed.txt" "$hostname`n "
+		 Add-Content "$cwd\computers_completed.txt" "$hostname`n "
 	}
 	catch {
 		if ($hostname -ne ""){
 			$skipped = "True"
 			write-host "$hostname is not accessible or failed for some reason: skipping" -foregroundcolor "yellow";
-			Add-Content "$cwd\skipped.txt" "$hostname`n";
+			Add-Content "$cwd\computers_skipped.txt" "$hostname`n";
 		}
 	}
 }
@@ -117,18 +129,19 @@ foreach ($hostname in $hostnames){
 		Continue;
 	}
 	if ($hostname -ne "") {
-		## This line skips things named someting-something-something, which tend to be servers in most organizations. Tailor to your needs
-		if ($hostname -like '*-*-*' ) { }
+		## This line skips any pattern of hostnames, which could be servers in most organizations. Tailor to your needs
+		if ($hostname -like $Config.Settings.Global.excludeHostnamePattern ) { }
+		elseif ($ignore_hosts.Contains($hostname)) {}
 		else {
 			write-host "$hostname" -foregroundcolor "magenta"
 			Start-Job $perHostJob -ArgumentList $hostname, $cwd, $remote_basedir, $task, $txtOutputFile, $sqlConnectString, $httpOutputUrl
 			$count++
-			## You can throttle performance here by adjusting the number of hosts started in a given amount of time. The below is 50 hosts every 300 seconds
-			if ($count -gt 25) {
-				write-host "Sleeping for 300 seconds after trying 50 hosts..."
+			## You can throttle performance/memory usage here by adjusting the number of hosts started in a given amount of time. 
+			if ($count -gt $Config.Settings.Global.hostBatchSize) {
+				write-host "Sleeping for $Config.Settings.Global.hotsBatchDelay seconds after trying $Config.Settings.Global.hostBatchSize hosts..."
 				$sleepcount = 0
 				$count = 0
-				while ($sleepcount -lt 30) {
+				while ($sleepcount -lt $Config.Settings.Global.hotsBatchDelay) {
 					$results = Get-Job -State "Completed" | Receive-Job 2>&1
 					if ($results) { write-host "$results`n" -foregroundcolor "gray" }
 					Get-Job -state "Completed" | remove-job
