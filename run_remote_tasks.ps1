@@ -8,9 +8,9 @@
 Param( 
 	[string]$task,
 	[string]$remote_basedir = '\windows\temp\',
-	[AllowEmptyString()][string]$txtOutputFile = 'FALSE',
-	[AllowEmptyString()][string]$httpOutputUrl = 'FALSE',
-	[AllowEmptyString()][string]$sqlConnectString = 'FALSE',
+	[string]$txtOutputFile,
+	[string]$httpOutputUrl,
+	[string]$sqlConnectString,
 	[switch]$syncAD,
 	[switch]$resumeScan,
 	[switch]$newScan
@@ -19,10 +19,10 @@ Param(
 ## Get configuration from XML file
 [xml]$Config = Get-Content "config.ioc-hunt.xml"
 
-## If the flag was specified, use the value from the config
-if($txtOutputFile -eq 'FALSE'){$txtOutputFile = $Config.Settings.Global.textOutputFile}
-if($httpOutputUrl -eq 'FALSE'){$httpOutputUrl = $Config.Settings.Global.httpoutputUrl}
-if($sqlConnectString -eq 'FALSE'){$sqlConnectString = $Config.Settings.Global.sqlConnectString}
+## If the flag wasn't specified, use the value from the config
+if(!$txtOutputFile){$txtOutputFile = $Config.Settings.Global.textOutputFile}
+if(!$httpOutputUrl){$httpOutputUrl = $Config.Settings.Global.httpoutputUrl}
+if(!$sqlConnectString){$sqlConnectString = $Config.Settings.Global.sqlConnectString}
 
 
 ## You must have "Active Directory Modules for Windows Powershell" from Remote Server Admin Tools installed on the workstation running this
@@ -70,16 +70,26 @@ if ($syncAD) {
 	Add-Content "$cwd\computers.txt" $hostnames
 }
 else {
-	write-host "Starting a new scan.`n Reading computers from file computers.txt`n"
-	$hostnames = Get-Content -Path "$cwd\computers.txt"
+	if (Test-Path "$cwd\computers.txt"){
+		write-host "Starting a new scan.`n Reading computers from file computers.txt`n"
+		$hostnames = Get-Content -Path "$cwd\computers.txt"
+	}
+	else {
+		write-host "Unable to read file computers.txt for list of hosts to run against, the -syncAD flag was not specified, and not resuming a previous scan. Exiting."
+		Stop-Transcript;
+		exit;
+	}
 }
 
-$ignore_hosts = Get-Content -Path "$cwd\computers_ignore.txt"
+if (Test-Path "$cwd\computers_ignore.txt"){
+	$ignore_hosts = Get-Content -Path "$cwd\computers_ignore.txt"
+	write-host "Skipping computers listed in computers_ignore.txt file."
+}
 
-## Either read hostnames from file, or collect from AD
+## 
 if($resumeScan){
 	if (Test-Path "$cwd\computers_skipped.txt"){
-		write-host "Resuming skipped hosts from previous scan. Delete the skipped.txt file if you want to start a new scan.`n"
+		write-host "Resuming skipped hosts from previous scan. Delete the computers_skipped.txt file if you want to start a new scan.`n"
 		$hostnames = Get-Content -Path "$cwd\computers_skipped.txt"
 		Move-Item $cwd\computers_skipped.txt $cwd\computers_skipped.$date.txt
 	}
