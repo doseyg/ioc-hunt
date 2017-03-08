@@ -1,3 +1,6 @@
+#####
+## Theres no telling if this works currently. If functional, it would listen for data from the remote tasks and then write it to the database or text file.
+
 
 Param(
   [string]$txtOutputFile,
@@ -20,6 +23,7 @@ if ($sqlConnectString){
 
 
 $listener = New-Object System.Net.HttpListener
+# use $config.Settings.httpListener.httpPort here
 $listener.Prefixes.Add('http://+:8008/')
 
 $listener.Start()

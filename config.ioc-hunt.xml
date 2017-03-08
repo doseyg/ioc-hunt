@@ -8,6 +8,11 @@
 	<fileCopySleep>15</fileCopySleep>
 	<hostBatchSize>50</hostBatchSize>
 	<hostBatchDelay>30</hostBatchDelay>
+	<profileServer></profileServer>
+	<profilePath></profilePath>
+	<homeServer></homeServer>
+	<homePath></homePath>
+	<remote_basedir>\windows\temp\</remote_basedir>
  </Global>
  <Yara>
 	<ruleFile>rules.yar</ruleFile>
@@ -16,10 +21,10 @@
 	<Autoruns>
 		<baseDir>C:\</baseDir>
 	</Autoruns>
-	<hash_files>
+	<files_hash>
 		<filePath>C:\</filePath>
 		<maxFileSize>15000000</maxFileSize>
-	</hash_files>
+	</files_hash>
  </Tasks>
  <HttpListener>
 	<httpPort>8008</httpPort>

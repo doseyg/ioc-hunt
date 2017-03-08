@@ -14,7 +14,9 @@ Param(
 	[switch]$yara,
 	[switch]$cleanup,
 	[switch]$dependencies,
-	[switch]$readConfig
+	[switch]$readConfig,
+	[switch]$profiles,
+	[switch]$homes,
 	[string]$filePath = "c:\",
 	[string]$maxFileSize = '15000000'
 )
@@ -27,6 +29,10 @@ if($sqlConnectString -eq 'FALSE'){$sqlConnectString = $null}
 if($readConfig){
 	## Get configuration from XML file
 	[xml]$Config = Get-Content "config.ioc-hunt.xml"
+	
+	## Map and script specific variables
+	$filePath = $Config.Settings.files_hash.filePath
+	$maxFileSize = $Config.Settings.files_hash.maxFileSize
 
 	## If the flag wasn't specified, use the value from the config
 	if(!$txtOutputFile){$txtOutputFile = $Config.Settings.Global.textOutputFile}
@@ -70,57 +76,84 @@ if($yara){
     else {        $yara_cmd = ''  }
 }
 
-## Search for specified files in $filePath
-$searchResults = (Get-ChildItem -Recurse -Force $filePath -ErrorAction SilentlyContinue | Where-Object { !($_.Attributes -match "ReparsePoint") -and ( $_.extension -eq ".exe" `
-        -or $_.extension -eq ".dll" `
-        -or $_.extension -eq ".hlp" `
-        -or $_.extension -eq ".scr" `
-        -or $_.extension -eq ".pif" `
-        -or $_.extension -eq ".com" `
-        -or $_.extension -eq ".msi" `
-        -or $_.extension -eq ".hta" `
-        -or $_.extension -eq ".cpl" `
-        -or $_.extension -eq ".bat" `
-        -or $_.extension -eq ".cmd" `
-        -or $_.extension -eq ".scf" `
-        -or $_.extension -eq ".inf" `
-        -or $_.extension -eq ".reg" `
-        -or $_.extension -eq ".job" `
-        -or $_.extension -eq ".tmp" `
-        -or $_.extension -eq ".ini" `
-        -or $_.extension -eq ".bin" ) } )
+$main_task = {
+	## Search for specified files in $filePath
+	$searchResults = (Get-ChildItem -Recurse -Force $filePath -ErrorAction SilentlyContinue | Where-Object { !($_.Attributes -match "ReparsePoint") -and ( $_.extension -eq ".exe" `
+	        -or $_.extension -eq ".dll" `
+	        -or $_.extension -eq ".hlp" `
+	        -or $_.extension -eq ".scr" `
+	        -or $_.extension -eq ".pif" `
+	        -or $_.extension -eq ".com" `
+	        -or $_.extension -eq ".msi" `
+	        -or $_.extension -eq ".hta" `
+	        -or $_.extension -eq ".cpl" `
+	        -or $_.extension -eq ".bat" `
+	        -or $_.extension -eq ".cmd" `
+	        -or $_.extension -eq ".scf" `
+	        -or $_.extension -eq ".inf" `
+	        -or $_.extension -eq ".reg" `
+	        -or $_.extension -eq ".job" `
+	        -or $_.extension -eq ".tmp" `
+	        -or $_.extension -eq ".ini" `
+	        -or $_.extension -eq ".bin" ) } )
 
-## for each file found, determine its length and if less than 15MB, hash it, write to CSV, and insert into database
- foreach ($file in $searchResults) {
-     $length = $file.length
-     $fileName = $file.fullName
-     if ($length -lt $maxFileSize ) {
-		## Calculate the md5 hash value
-		$hash = [System.BitConverter]::ToString($md5.ComputeHash([System.IO.File]::ReadAllBytes($fileName)))
-		# Remove - characters from hash value
-		$hash = %{$hash -replace "-",""}
-		$output = "$computername,'$fileName',$hash,$length`n"
-		## write to the local CSV file
-		if($txtOutputFile){
-			Add-Content $txtOutputFile $output
+	## for each file found, determine its length and if less than 15MB, hash it, write to CSV, and insert into database
+	 foreach ($file in $searchResults) {
+	     $length = $file.length
+	     $fileName = $file.fullName
+	     if ($length -lt $maxFileSize ) {
+			## Calculate the md5 hash value
+			$hash = [System.BitConverter]::ToString($md5.ComputeHash([System.IO.File]::ReadAllBytes($fileName)))
+			# Remove - characters from hash value
+			$hash = %{$hash -replace "-",""}
+			$output = "$computername,'$fileName',$hash,$length`n"
+			## write to the local CSV file
+			if($txtOutputFile){
+				Add-Content $txtOutputFile $output
+			}
+			## Ouput to HTTP
+			if ($httpOutputUrl){
+				#Invoke-WebRequest "$httpOutput?$output"
+				$urloutput =  [System.Convert]::ToBase64String([System.Text.Encoding]::UNICODE.GetBytes($output))
+				$request = [System.Net.WebRequest]::Create("$httpOutputUrl/$urloutput");
+				$resp = $request.GetResponse();
+			}
+			## Insert into a database
+			if($sqlConnectString){
+				$cmd.commandtext = "INSERT INTO hashes (Hostname,File_Name,Hashes_MD5,Size_In_Bytes) VALUES('{0}','{1}','{2}','{3}')" -f $computername,$fileName,$hash,$length,[string]$yara_result
+				$cmd.executenonquery()
+			}
+			#If no outputs are defined, write to stdout
+			if($txtOutputFile -or $httpOutputUrl -or $sqlConnectString){}
+			else { write-host $output }
+	     }
+	 }
+}
+ 
+ if($profiles){
+	if($computerName -eq $Config.Settings.Global.profileServer){
+		$profiles = Get-ChildItem $Config.Settings.Global.profilePath | ?{ $_.PSIsContainer } | Select-Object FullName
+		foreach($filepath in $profiles){
+			&main_task;
+			Start-Sleep 5;
 		}
-		## Ouput to HTTP
-		if ($httpOutputUrl){
-			#Invoke-WebRequest "$httpOutput?$output"
-			$urloutput =  [System.Convert]::ToBase64String([System.Text.Encoding]::UNICODE.GetBytes($output))
-			$request = [System.Net.WebRequest]::Create("$httpOutputUrl/$urloutput");
-			$resp = $request.GetResponse();
-		}
-		## Insert into a database
-		if($sqlConnectString){
-			$cmd.commandtext = "INSERT INTO hashes (Hostname,File_Name,Hashes_MD5,Size_In_Bytes) VALUES('{0}','{1}','{2}','{3}')" -f $computername,$fileName,$hash,$length,[string]$yara_result
-			$cmd.executenonquery()
-		}
-		#If no outputs are defined, write to stdout
-		if($txtOutputFile -or $httpOutputUrl -or $sqlConnectString){}
-		else { write-host $output }
-     }
+	}
  }
+ if($homes){
+ 	if($computerName -eq $Config.Settings.Global.homeServer){
+		$homes = Get-ChildItem $Config.Settings.Global.homePath | ?{ $_.PSIsContainer } | Select-Object FullName
+		foreach($filepath in $homes){
+			&main_task;
+			Start-Sleep 5;
+		}
+	}
+ }
+ 
+ 
+ 
+ 
+ 
+ 
  
  ## Close the database connection
  if($sqlConnectString){
@@ -133,5 +166,5 @@ $searchResults = (Get-ChildItem -Recurse -Force $filePath -ErrorAction SilentlyC
 	remove-Item "$cwd\yara64.exe"
 	remove-Item "$cwd\yara32.exe"
 	remove-Item "$cwd\rules.yar"
-	remove-Item "$cwd\task_hash_files.ps1"
+	remove-Item "$cwd\files_hash.ps1"
  }

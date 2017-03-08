@@ -27,6 +27,7 @@ Param(
 if(!$txtOutputFile){$txtOutputFile = $Config.Settings.Global.textOutputFile}
 if(!$httpOutputUrl){$httpOutputUrl = $Config.Settings.Global.httpoutputUrl}
 if(!$sqlConnectString){$sqlConnectString = $Config.Settings.Global.sqlConnectString}
+if($includeConfig){$includeConfig = '-readConfig'}
 
 
 ## You must have "Active Directory Modules for Windows Powershell" from Remote Server Admin Tools installed on the workstation running this
@@ -66,6 +67,8 @@ else{
 	exit;
 }
 
+
+
 ## Read in computers from Active Directory or a text file.
 if ($syncAD) {
 	write-host "Starting a new scan."
@@ -104,6 +107,8 @@ if($resumeScan){
 }
 
 
+
+
 ## The job to copy and run the script on each remote host, called from below
 $perHostJob = {
 	param($hostname,$cwd,$remote_basedir,$task,$txtOutputFile,$sqlConnectString,$httpOutputUrl)
@@ -126,7 +131,7 @@ $perHostJob = {
 		write-host "$hostname is online: running" -foregroundcolor "green"
 		## We sleep here to allow time for the file copy to complete
 		Start-Sleep $Config.Settings.Global.fileCopySleep
-		invoke-wmimethod win32_process -computername $hostname -name create -argumentlist "powershell -ExecutionPolicy Bypass C:\$remote_basedir\$remote_task -txtOutputFile $txtOutput -sqlConnectString $sqlConnectString -httpOutputUrl $httpOutputUrl"
+		invoke-wmimethod win32_process -computername $hostname -name create -argumentlist "powershell -ExecutionPolicy Bypass C:\$remote_basedir\$remote_task -txtOutputFile $txtOutput -sqlConnectString $sqlConnectString -httpOutputUrl $httpOutputUrl $includeConfig"
 		## If ps remoting was enabled we could use these instead of above
 		#Invoke-Command -Computer $hostname -ScriptBlock { param ($cwd); Invoke-Expression "$cwd\tasks\$task" } -ArgumentList $cwd 
 		 Add-Content "$cwd\computers_completed.txt" "$hostname`n "
