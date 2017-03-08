@@ -148,9 +148,9 @@ $main_task = {
 		}
 	}
  }
- 
- 
- 
+## Run the searching and hashing
+&$main_task
+
  
  
  

@@ -27,7 +27,7 @@ Param(
 if(!$txtOutputFile){$txtOutputFile = $Config.Settings.Global.textOutputFile}
 if(!$httpOutputUrl){$httpOutputUrl = $Config.Settings.Global.httpoutputUrl}
 if(!$sqlConnectString){$sqlConnectString = $Config.Settings.Global.sqlConnectString}
-if($includeConfig){$includeConfig = '-readConfig'}
+
 
 
 ## You must have "Active Directory Modules for Windows Powershell" from Remote Server Admin Tools installed on the workstation running this
@@ -92,6 +92,7 @@ if (Test-Path "$cwd\computers_ignore.txt"){
 	$ignore_hosts = Get-Content -Path "$cwd\computers_ignore.txt"
 	write-host "Skipping computers listed in computers_ignore.txt file."
 }
+else { $ignore_hosts = ""}
 
 ## 
 if($resumeScan){
@@ -111,7 +112,7 @@ if($resumeScan){
 
 ## The job to copy and run the script on each remote host, called from below
 $perHostJob = {
-	param($hostname,$cwd,$remote_basedir,$task,$txtOutputFile,$sqlConnectString,$httpOutputUrl)
+	param($hostname,$cwd,$remote_basedir,$task,$txtOutputFile,$sqlConnectString,$httpOutputUrl,$includeConfig,$Config)
 	#write-host "Checking dependencies for task $task"
 	$remote_task = $task.split('\')[-1]
 	$dependencies = (Invoke-Expression "$cwd\tasks\$task -dependencies").split(",")
@@ -131,7 +132,7 @@ $perHostJob = {
 		write-host "$hostname is online: running" -foregroundcolor "green"
 		## We sleep here to allow time for the file copy to complete
 		Start-Sleep $Config.Settings.Global.fileCopySleep
-		invoke-wmimethod win32_process -computername $hostname -name create -argumentlist "powershell -ExecutionPolicy Bypass C:\$remote_basedir\$remote_task -txtOutputFile $txtOutput -sqlConnectString $sqlConnectString -httpOutputUrl $httpOutputUrl $includeConfig"
+		invoke-wmimethod win32_process -computername $hostname -name create -argumentlist "powershell -ExecutionPolicy Bypass C:\$remote_basedir\$remote_task -txtOutputFile '$txtOutputFile' -sqlConnectString $sqlConnectString -httpOutputUrl $httpOutputUrl -readConfig $includeConfig"
 		## If ps remoting was enabled we could use these instead of above
 		#Invoke-Command -Computer $hostname -ScriptBlock { param ($cwd); Invoke-Expression "$cwd\tasks\$task" } -ArgumentList $cwd 
 		 Add-Content "$cwd\computers_completed.txt" "$hostname`n "
@@ -157,7 +158,7 @@ foreach ($hostname in $hostnames){
 		elseif ($ignore_hosts.Contains($hostname)) {}
 		else {
 			write-host "$hostname" -foregroundcolor "magenta"
-			Start-Job $perHostJob -ArgumentList $hostname, $cwd, $remote_basedir, $task, $txtOutputFile, $sqlConnectString, $httpOutputUrl
+			Start-Job $perHostJob -ArgumentList $hostname, $cwd, $remote_basedir, $task, $txtOutputFile, $sqlConnectString, $httpOutputUrl, $includeConfig, $Config
 			$count++
 			## You can throttle performance/memory usage here by adjusting the number of hosts started in a given amount of time. 
 			if ($count -gt $Config.Settings.Global.hostBatchSize) {
