@@ -14,6 +14,7 @@ Param(
 	[switch]$yara,
 	[switch]$cleanup,
 	[switch]$dependencies,
+	[switch]$readConfig
 	[string]$filePath = "c:\",
 	[string]$maxFileSize = '15000000'
 )
@@ -22,6 +23,18 @@ Param(
 if($txtOutputFile -eq 'FALSE'){$txtOutputFile = $null}
 if($httpOutputUrl -eq 'FALSE'){$httpOutputUrl = $null}
 if($sqlConnectString -eq 'FALSE'){$sqlConnectString = $null}
+
+if($readConfig){
+	## Get configuration from XML file
+	[xml]$Config = Get-Content "config.ioc-hunt.xml"
+
+	## If the flag wasn't specified, use the value from the config
+	if(!$txtOutputFile){$txtOutputFile = $Config.Settings.Global.textOutputFile}
+	if(!$httpOutputUrl){$httpOutputUrl = $Config.Settings.Global.httpoutputUrl}
+	if(!$sqlConnectString){$sqlConnectString = $Config.Settings.Global.sqlConnectString}
+}
+
+
 
 ## If the dependencies switch was supplied, return a comma seperated list of any files needed by this script, and then exit.
 if ($dependencies) {

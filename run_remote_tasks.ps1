@@ -13,7 +13,11 @@ Param(
 	[string]$sqlConnectString,
 	[switch]$syncAD,
 	[switch]$resumeScan,
-	[switch]$newScan
+	[switch]$newScan,
+	[switch]$homes,
+	[switch]$includeConfig,
+	[switch]$profiles
+	
 )
 
 ## Get configuration from XML file
@@ -112,6 +116,10 @@ $perHostJob = {
 				write-host "Copying $dependency to $remote_basedir on $hostname as dependency for $task $remote_task"
 				Copy-Item "$cwd\dependencies\$dependency" -Destination "\\$hostname\c`$\$remote_basedir\$dependency" -force
 			}
+		}
+		if($includeConfig){
+			write-host "Copying config.ioc-hunt.xml to $remote_basedir on $hostname"
+			Copy-Item "$cwd\config.ioc-hunt.xml" -Destination "\\$hostname\c`$\$remote_basedir\config.ioc-hunt.xml" -force
 		}
 		Copy-Item "$cwd\tasks\$task" -Destination \\$hostname\c`$\$remote_basedir\$remote_task -force
 		#wmic /NODE:"$hostname" process call create "powershell set-executionpolicy unrestricted" 2> $null
