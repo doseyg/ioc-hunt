@@ -17,7 +17,8 @@ CREATE TABLE [dbo].[files](
 	[Hostname] [varchar](255) NOT NULL,
 	[File_Name] [nvarchar](max) NOT NULL,
 	[Hashes_MD5] [varchar](32) NULL,
-	[Size_In_Bytes] [varchar](32) NULL
+	[Size_In_Bytes] [varchar](32) NULL,
+	[yara_result] [nvarchar](max) NOT NULL
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 
 GO

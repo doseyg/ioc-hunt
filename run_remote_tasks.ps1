@@ -132,7 +132,7 @@ $perHostJob = {
 		write-host "$hostname is online: running" -foregroundcolor "green"
 		## We sleep here to allow time for the file copy to complete
 		Start-Sleep $Config.Settings.Global.fileCopySleep
-		invoke-wmimethod win32_process -computername $hostname -name create -argumentlist "powershell -ExecutionPolicy Bypass C:\$remote_basedir\$remote_task -txtOutputFile '$txtOutputFile' -sqlConnectString $sqlConnectString -httpOutputUrl $httpOutputUrl -readConfig $includeConfig"
+		invoke-wmimethod win32_process -computername $hostname -name create -argumentlist "powershell -ExecutionPolicy Bypass C:\$remote_basedir\$remote_task -txtOutputFile '$txtOutputFile' -sqlConnectString '$sqlConnectString' -httpOutputUrl '$httpOutputUrl' -readConfig $includeConfig"
 		## If ps remoting was enabled we could use these instead of above
 		#Invoke-Command -Computer $hostname -ScriptBlock { param ($cwd); Invoke-Expression "$cwd\tasks\$task" } -ArgumentList $cwd 
 		 Add-Content "$cwd\computers_completed.txt" "$hostname`n "

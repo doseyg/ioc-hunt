@@ -1,0 +1,1 @@
+get-wmiobject win32_bios

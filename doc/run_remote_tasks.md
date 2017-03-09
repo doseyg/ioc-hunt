@@ -3,7 +3,7 @@
 ## Flags
 
 ### -task (REQUIRED)
-Specify which task to run. Will list available tasks and exit if no option supplied. The "tasks" are the powershell scripts in the tasks folder. An example task is "windows\files-hash.ps1"
+Specify which task to run. Will list available tasks and exit if no option is supplied. The "tasks" are the powershell scripts in the tasks folder. An example task is "windows\files_hash.ps1"
 
 ### -includeConfig
 Tells the script to copy the ioc-hunt.config.xml file over to every host the script is run on. Passes the -readConfig option the called task
@@ -11,7 +11,7 @@ Tells the script to copy the ioc-hunt.config.xml file over to every host the scr
 ### -homes
 
 ### -httpOutputUrl <URL>
-This isn't fully supported. Tells the task to write output to a URL. The URL is inserted into http://$httpOutputUrl/?task_process_scan=$urloutput. You'll probably need to edit code for this to wokr how you want. SSL and TLS are not supported.
+This isn't fully supported. Tells the task to write output to a URL. The URL is inserted into http://$httpOutputUrl/?task_process_scan=$urloutput. You'll probably need to edit code for this to work how you want. SSL and TLS are not supported.
 
 ### -profiles
 
@@ -31,7 +31,7 @@ Pull a list of all computers from the Active Directory domain and append them to
 Tells the tasks to write the results to this file on the REMOTE host. The file is the full path, for example c:\Windows\Temp\myfile.txt. 
 
 ### -httpOutputUrl <URL>
-This isn't fully supported. Tells the task to write output to a URL. The URL is inserted into http://$httpOutputUrl/?task_process_scan=$urloutput. You'll probably need to edit code for this to wokr how you want. SSL and TLS are not supported.
+This isn't fully supported. Tells the task to write output to a URL. The URL is inserted into http://$httpOutputUrl/?task_process_scan=$urloutput. You'll probably need to edit code for this to work how you want. SSL and TLS are not supported.
 
 
 ## Files
@@ -50,5 +50,3 @@ A list of computers the task successfully ran against. Or at least it appears th
 
 ### computers_ignore.txt
 A list of computers where the task should not run. Must match the hostname or IP exactly as listed in computers.txt
-
-""

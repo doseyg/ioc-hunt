@@ -14,10 +14,10 @@ Param(
 	[switch]$yara,
 	[switch]$cleanup,
 	[switch]$dependencies,
-	[switch]$readConfig,
+	[string]$readConfig,
 	[switch]$profiles,
 	[switch]$homes,
-	[string]$filePath = "c:\",
+	[string]$filePath = "c:\users",
 	[string]$maxFileSize = '15000000'
 )
 
@@ -31,13 +31,14 @@ if($readConfig){
 	[xml]$Config = Get-Content "config.ioc-hunt.xml"
 	
 	## Map and script specific variables
-	$filePath = $Config.Settings.files_hash.filePath
-	$maxFileSize = $Config.Settings.files_hash.maxFileSize
+	$filePath = $Config.Settings.Tasks.files_hash.filePath
+	$maxFileSize = $Config.Settings.Tasks.files_hash.maxFileSize
 
 	## If the flag wasn't specified, use the value from the config
 	if(!$txtOutputFile){$txtOutputFile = $Config.Settings.Global.textOutputFile}
 	if(!$httpOutputUrl){$httpOutputUrl = $Config.Settings.Global.httpoutputUrl}
 	if(!$sqlConnectString){$sqlConnectString = $Config.Settings.Global.sqlConnectString}
+	write-host "DEBUG Using $filePath $maxFileSize $sqlConnectString"
 }
 
 
@@ -67,14 +68,16 @@ if ($sqlConnectString){
 
 ## Determine if Yara is available. We should probably check system architecture here with get-wmiobject win32_processor
 if($yara){
-    $yara64 = Test-Path "$cwd\yara64.exe","$cwd\rules.yar"
-    $yara32 = Test-Path "$cwd\yara32.exe","$cwd\rules.yar"
-    if ($yara64 -eq $True -and $arch -eq '64') {
-		$yara_cmd = "$cwd\yara64.exe"  }
-    elseif ($yara32 -eq $True -and $arch -eq '32') {
- 		$yara_cmd = "$cwd\yara32.exe" }
-    else {        $yara_cmd = ''  }
+	if ( (Test-Path "$cwd\yara.exe") -and (Test-Path "$cwd\rules.yar") ) {
+			$yara_available = 'TRUE'
+	}
+	else {
+		$yara_available = 'FALSE' 
+		Write-Host "yara.exe or the rules.yar file is not available in $cwd, exiting."; 
+		exit; 
+	}
 }
+
 
 $main_task = {
 	## Search for specified files in $filePath
@@ -99,13 +102,24 @@ $main_task = {
 
 	## for each file found, determine its length and if less than 15MB, hash it, write to CSV, and insert into database
 	 foreach ($file in $searchResults) {
-	     $length = $file.length
-	     $fileName = $file.fullName
-	     if ($length -lt $maxFileSize ) {
+	    $length = $file.length
+	    $fileName = $file.fullName
+		$hash = ""
+	    if ($length -lt $maxFileSize ) {
 			## Calculate the md5 hash value
 			$hash = [System.BitConverter]::ToString($md5.ComputeHash([System.IO.File]::ReadAllBytes($fileName)))
 			# Remove - characters from hash value
 			$hash = %{$hash -replace "-",""}
+			
+			## Run the Yara command
+			if ($yara_available){
+				$yara_result = Invoke-Expression ("$cwd\yara.exe -s $cwd\rules.yar $file")
+			}
+			else {
+				$yara_result = "not_checked"
+			}
+			
+			
 			$output = "$computername,'$fileName',$hash,$length`n"
 			## write to the local CSV file
 			if($txtOutputFile){
@@ -120,18 +134,19 @@ $main_task = {
 			}
 			## Insert into a database
 			if($sqlConnectString){
-				$cmd.commandtext = "INSERT INTO hashes (Hostname,File_Name,Hashes_MD5,Size_In_Bytes) VALUES('{0}','{1}','{2}','{3}')" -f $computername,$fileName,$hash,$length,[string]$yara_result
+				$cmd.commandtext = "INSERT INTO files (Hostname,File_Name,Hashes_MD5,Size_In_Bytes,yara_result) VALUES('{0}','{1}','{2}','{3}','{4}')" -f $computername,$fileName,$hash,$length,[string]$yara_result
 				$cmd.executenonquery()
 			}
 			#If no outputs are defined, write to stdout
 			if($txtOutputFile -or $httpOutputUrl -or $sqlConnectString){}
 			else { write-host $output }
-	     }
-	 }
+		}
+	}
 }
  
  if($profiles){
 	if($computerName -eq $Config.Settings.Global.profileServer){
+		write-host "DEBUG working on profiles"
 		$profiles = Get-ChildItem $Config.Settings.Global.profilePath | ?{ $_.PSIsContainer } | Select-Object FullName
 		foreach($filepath in $profiles){
 			&main_task;
@@ -141,6 +156,7 @@ $main_task = {
  }
  if($homes){
  	if($computerName -eq $Config.Settings.Global.homeServer){
+		write-host "DEBUG working on homes"
 		$homes = Get-ChildItem $Config.Settings.Global.homePath | ?{ $_.PSIsContainer } | Select-Object FullName
 		foreach($filepath in $homes){
 			&main_task;
@@ -151,10 +167,7 @@ $main_task = {
 ## Run the searching and hashing
 &$main_task
 
- 
- 
- 
- 
+  
  ## Close the database connection
  if($sqlConnectString){
 	$conn.close()
