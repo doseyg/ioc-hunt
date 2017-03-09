@@ -14,6 +14,7 @@ Param(
 	[string]$computerName,
 	[string]$processName,
 	[string]$processId,
+	[switch]$readConfig,
 	[switch]$dependencies,
 	[switch]$yara,
 	[switch]$cleanup
@@ -91,16 +92,19 @@ else { $processes =  Get-Process }
 foreach ($process in $processes) {
 	$filename = $process.Path
 	$processID = $process.Id
-	#$fileversion = $process.fileversion
+	$fileversion = $process.fileversion
 	$processname = $process.name
-	#$product = $process.product
-	#$description = $process.description
+	$product = $process.product
+	$description = $process.description
 	$hash = ''
 	
 	## Run the Yara command
 	if ($yara_available){
 		#$yara_result = Invoke-Command -Computer $remote_computerName -ScriptBlock { param($processID); c:\yara.exe -s c:\rules.yar $processID } -ArgumentList $processID
 		$yara_result = Invoke-Expression ("$cwd\yara.exe -s $cwd\rules.yar $processID")
+	}
+	else{
+		$yara_result = "not_checked"
 	}
 	
 	if($filename){

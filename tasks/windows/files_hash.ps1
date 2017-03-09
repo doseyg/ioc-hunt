@@ -17,7 +17,7 @@ Param(
 	[string]$readConfig,
 	[switch]$profiles,
 	[switch]$homes,
-	[string]$filePath = "c:\users",
+	[string]$filePath = "c:\",
 	[string]$maxFileSize = '15000000'
 )
 
@@ -38,7 +38,6 @@ if($readConfig){
 	if(!$txtOutputFile){$txtOutputFile = $Config.Settings.Global.textOutputFile}
 	if(!$httpOutputUrl){$httpOutputUrl = $Config.Settings.Global.httpoutputUrl}
 	if(!$sqlConnectString){$sqlConnectString = $Config.Settings.Global.sqlConnectString}
-	write-host "DEBUG Using $filePath $maxFileSize $sqlConnectString"
 }
 
 

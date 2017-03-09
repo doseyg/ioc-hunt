@@ -10,6 +10,7 @@ Param(
 	[string]$txtOutputFile,
 	[string]$httpOutputUrl,
 	[string]$sqlConnectString,
+	[string]$readConfig,
 	[switch]$dependencies,
     [switch]$cleanup
 )
