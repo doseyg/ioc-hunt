@@ -1,8 +1,8 @@
 ###############################################################
 ## Glen Dosey <doseyg@r-networks.net>
-## January 22 2017
-## 
-## 
+## March 9 2017
+## https://github.com/doseyg/ioc-hunt
+## This is for powershell v2 on Windows 7,8 and 10 and should work out of the box.  
 ## 
 
 Param( 
@@ -31,7 +31,7 @@ if(!$sqlConnectString){$sqlConnectString = $Config.Settings.Global.sqlConnectStr
 
 
 ## You must have "Active Directory Modules for Windows Powershell" from Remote Server Admin Tools installed on the workstation running this
-if($syncAD){
+if($syncAD -eq $true){
 	if (Get-Module -ListAvailable -Name ActiveDirectory) {
 		Import-Module ActiveDirectory;
 	}
@@ -132,7 +132,7 @@ $perHostJob = {
 		write-host "$hostname is online: running" -foregroundcolor "green"
 		## We sleep here to allow time for the file copy to complete
 		Start-Sleep $Config.Settings.Global.fileCopySleep
-		invoke-wmimethod win32_process -computername $hostname -name create -argumentlist "powershell -ExecutionPolicy Bypass C:\$remote_basedir\$remote_task -txtOutputFile '$txtOutputFile' -sqlConnectString '$sqlConnectString' -httpOutputUrl '$httpOutputUrl' -readConfig $includeConfig"
+		Invoke-WmiMethod win32_process -computername $hostname -name create -argumentlist "powershell -ExecutionPolicy Bypass -file C:\$remote_basedir\$remote_task -txtOutputFile `"$txtOutputFile`" -sqlConnectString `"$sqlConnectString`" -httpOutputUrl `"$httpOutputUrl`" -readConfig $includeConfig"
 		## If ps remoting was enabled we could use these instead of above
 		#Invoke-Command -Computer $hostname -ScriptBlock { param ($cwd); Invoke-Expression "$cwd\tasks\$task" } -ArgumentList $cwd 
 		 Add-Content "$cwd\computers_completed.txt" "$hostname`n "
@@ -208,7 +208,7 @@ write-host "$results" -foregroundcolor "darkblue"
 write-host "Sleeping for 10 seconds, then killing the below left-over jobs. CTRL-C to cancel."
 Get-Job -State "Running"
 Start-Sleep 10
-write-host "Forcefully killing all local jobs now (remote hashing will continue)"
+write-host "Forcefully killing all local jobs now (remote tasks will continue)"
 Remove-Job -force *
 write-host "Done. "
 

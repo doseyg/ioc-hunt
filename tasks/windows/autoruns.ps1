@@ -1,7 +1,7 @@
 ###############################################################
 ## Glen Dosey <doseyg@r-networks.net>
 ## October 24 2016
-## 
+## https://github.com/doseyg/ioc-hunt
 ## This is for powershell v2 on Windows 7,8 and 10 and should work out of the box. 
 ## Output is to CLI unless HTTP,Text file, or SQL are specified.
 #################################################################
@@ -16,11 +16,11 @@ Param(
 )
 
 ## Because testing of FALSE with if returns true, set it to $null instead. This is an ugly hack, maybe someday I will have a cleaner solution
-if($txtOutputFile -eq 'FALSE'){$txtOutputFile = $null}
-if($httpOutputUrl -eq 'FALSE'){$httpOutputUrl = $null}
-if($sqlConnectString -eq 'FALSE'){$sqlConnectString = $null}
+if($txtOutputFile -eq $false){$txtOutputFile = $null}
+if($httpOutputUrl -eq $false){$httpOutputUrl = $null}
+if($sqlConnectString -eq $false){$sqlConnectString = $null}
 
-if($readConfig){
+if($readConfig -eq $true){
 	## Get configuration from XML file
 	[xml]$Config = Get-Content "config.ioc-hunt.xml"
 

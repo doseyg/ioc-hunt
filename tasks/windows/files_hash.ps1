@@ -1,9 +1,9 @@
 ###############################################################
-## Glen Dosey
-## Jan 2 2017
-## 
+## Glen Dosey <doseyg@r-networks.net>
+## Mar 9 2017
+## https://github.com/doseyg/ioc-hunt
 ## This is for powershell v2 on Windows 7,8 and 10 and should work out of the box.  
-## You may need to set the execution policy to unrestricted with the command 'powershell set-executionpolicy unrestricted' before running this script
+## 
 ## 
 #################################################################
 
@@ -17,29 +17,32 @@ Param(
 	[string]$readConfig,
 	[switch]$profiles,
 	[switch]$homes,
-	[string]$filePath = "c:\",
+	[string]$filePath = "c:\users",
 	[string]$maxFileSize = '15000000'
 )
 
 ## Because testing of FALSE with if returns true, set it to $null instead. This is an ugly hack, maybe someday I will have a cleaner solution
-if($txtOutputFile -eq 'FALSE'){$txtOutputFile = $null}
-if($httpOutputUrl -eq 'FALSE'){$httpOutputUrl = $null}
-if($sqlConnectString -eq 'FALSE'){$sqlConnectString = $null}
+if($txtOutputFile -eq $false){$txtOutputFile = $null}
+if($httpOutputUrl -eq $false){$httpOutputUrl = $null}
+if($sqlConnectString -eq $false){$sqlConnectString = $null}
 
-if($readConfig){
+if($readConfig -eq $true){
 	## Get configuration from XML file
 	[xml]$Config = Get-Content "config.ioc-hunt.xml"
 	
 	## Map and script specific variables
 	$filePath = $Config.Settings.Tasks.files_hash.filePath
 	$maxFileSize = $Config.Settings.Tasks.files_hash.maxFileSize
+	$homeServer = $Config.Settings.Global.homeServer
+	$homePath = $Config.Settings.Global.homePath
+	$profileServer = $Config.Settings.Global.profileServer
+	$profilePath = $Config.Settings.Global.profilePath
 
 	## If the flag wasn't specified, use the value from the config
 	if(!$txtOutputFile){$txtOutputFile = $Config.Settings.Global.textOutputFile}
 	if(!$httpOutputUrl){$httpOutputUrl = $Config.Settings.Global.httpoutputUrl}
 	if(!$sqlConnectString){$sqlConnectString = $Config.Settings.Global.sqlConnectString}
 }
-
 
 
 ## If the dependencies switch was supplied, return a comma seperated list of any files needed by this script, and then exit.
@@ -55,6 +58,7 @@ if ($dependencies) {
 $computerName = Get-Content env:computername
 $md5 = new-object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider
 $cwd = Convert-Path "."
+
 
 ## If a SQL Connection string was supplied, setup the database connection
 if ($sqlConnectString){
@@ -143,20 +147,20 @@ $main_task = {
 	}
 }
  
- if($profiles){
-	if($computerName -eq $Config.Settings.Global.profileServer){
+ if($profiles -eq $true){
+	if($computerName -eq $profileServer){
 		write-host "DEBUG working on profiles"
-		$profiles = Get-ChildItem $Config.Settings.Global.profilePath | ?{ $_.PSIsContainer } | Select-Object FullName
+		$profiles = Get-ChildItem $profilePath | ?{ $_.PSIsContainer } | Select-Object FullName
 		foreach($filepath in $profiles){
 			&main_task;
 			Start-Sleep 5;
 		}
 	}
  }
- if($homes){
- 	if($computerName -eq $Config.Settings.Global.homeServer){
+ if($homes -eq $true){
+ 	if($computerName -eq $homeServer){
 		write-host "DEBUG working on homes"
-		$homes = Get-ChildItem $Config.Settings.Global.homePath | ?{ $_.PSIsContainer } | Select-Object FullName
+		$homes = Get-ChildItem $homePath | ?{ $_.PSIsContainer } | Select-Object FullName
 		foreach($filepath in $homes){
 			&main_task;
 			Start-Sleep 5;

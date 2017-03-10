@@ -1,7 +1,7 @@
 ###############################################################
 ## Glen Dosey
 ## October 24 2016
-##
+## https://github.com/doseyg/ioc-hunt
 ## This is for powershell v2 on Windows 7,8 and 10 and should work out of the box. 
 ## You may need to set the execution policy to unrestricted with the command 'powershell set-executionpolicy unrestricted' before running this script
 ## Output is to CLI unless HTTP,Text file, or SQL are specified.
@@ -14,18 +14,18 @@ Param(
 	[string]$computerName,
 	[string]$processName,
 	[string]$processId,
-	[switch]$readConfig,
+	[string]$readConfig,
 	[switch]$dependencies,
 	[switch]$yara,
 	[switch]$cleanup
 )
 
 ## Because testing of FALSE with if returns true, set it to $null instead. This is an ugly hack, maybe someday I will have a cleaner solution
-if($txtOutputFile -eq 'FALSE'){$txtOutputFile = $null}
-if($httpOutputUrl -eq 'FALSE'){$httpOutputUrl = $null}
-if($sqlConnectString -eq 'FALSE'){$sqlConnectString = $null}
+if($txtOutputFile -eq $false){$txtOutputFile = $null}
+if($httpOutputUrl -eq $false){$httpOutputUrl = $null}
+if($sqlConnectString -eq $false){$sqlConnectString = $null}
 
-if($readConfig){
+if($readConfig -eq $true){
 	## Get configuration from XML file
 	[xml]$Config = Get-Content "config.ioc-hunt.xml"
 
