@@ -28,7 +28,10 @@ if(!$txtOutputFile){$txtOutputFile = $Config.Settings.Global.textOutputFile}
 if(!$httpOutputUrl){$httpOutputUrl = $Config.Settings.Global.httpoutputUrl}
 if(!$sqlConnectString){$sqlConnectString = $Config.Settings.Global.sqlConnectString}
 
-
+$hostBatchDelay = 15
+$hostBatchDelay = 15
+#$hostBatchSize = $Config.Settings.Global.hostBatchSize
+#$hostBatchSize = $Config.Settings.Global.hostBatchSize
 
 ## You must have "Active Directory Modules for Windows Powershell" from Remote Server Admin Tools installed on the workstation running this
 if($syncAD -eq $true){
@@ -161,11 +164,11 @@ foreach ($hostname in $hostnames){
 			Start-Job $perHostJob -ArgumentList $hostname, $cwd, $remote_basedir, $task, $txtOutputFile, $sqlConnectString, $httpOutputUrl, $includeConfig, $Config
 			$count++
 			## You can throttle performance/memory usage here by adjusting the number of hosts started in a given amount of time. 
-			if ($count -gt $Config.Settings.Global.hostBatchSize) {
-				write-host "Sleeping for $Config.Settings.Global.hotsBatchDelay seconds after trying $Config.Settings.Global.hostBatchSize hosts..."
+			if ($count -gt $hostBatchSize) {
+				write-host "Sleeping for $hostBatchDelay seconds after trying $hostBatchSize hosts..."
 				$sleepcount = 0
 				$count = 0
-				while ($sleepcount -lt $Config.Settings.Global.hotsBatchDelay) {
+				while ($sleepcount -lt $hostBatchDelay) {
 					$results = Get-Job -State "Completed" | Receive-Job 2>&1
 					if ($results) { write-host "$results`n" -foregroundcolor "gray" }
 					Get-Job -state "Completed" | remove-job

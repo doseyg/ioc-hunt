@@ -10,7 +10,7 @@ $last_hashset = 270
 
 $conn = New-Object System.Data.SqlClient.SqlConnection
 #$conn.ConnectionString = "Data Source=tcp:IP;Database=HashDB;Integrated Security=false;UID=hash_user;Password=password;"
-$conn.ConnectionString = $Config.Settings.Global.SqlConnectionString
+$conn.ConnectionString = $Config.Settings.Global.SqlConnectString
 $conn.open()
 $cmd = New-Object System.Data.SqlClient.SqlCommand
 $cmd.connection = $conn
