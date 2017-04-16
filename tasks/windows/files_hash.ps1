@@ -150,9 +150,9 @@ $main_task = {
  if($profiles -eq $true){
 	if($computerName -eq $profileServer){
 		write-host "DEBUG working on profiles"
-		$profiles = Get-ChildItem $profilePath | ?{ $_.PSIsContainer } | Select-Object FullName
-		foreach($filepath in $profiles){
-			&main_task;
+		$myprofiles = Get-ChildItem $profilePath | ?{ $_.PSIsContainer } | Select-Object FullName
+		foreach($filepath in $myprofiles){
+			&$main_task;
 			Start-Sleep 5;
 		}
 	}
@@ -160,9 +160,9 @@ $main_task = {
  if($homes -eq $true){
  	if($computerName -eq $homeServer){
 		write-host "DEBUG working on homes"
-		$homes = Get-ChildItem $homePath | ?{ $_.PSIsContainer } | Select-Object FullName
-		foreach($filepath in $homes){
-			&main_task;
+		$myhomes = Get-ChildItem $homePath | ?{ $_.PSIsContainer } | Select-Object FullName
+		foreach($filepath in $myhomes){
+			&$main_task;
 			Start-Sleep 5;
 		}
 	}
