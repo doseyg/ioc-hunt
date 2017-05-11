@@ -7,6 +7,7 @@
 
 Param( 
 	[string]$task,
+	[string]$task_args,
 	[string]$remote_basedir = '\windows\temp\',
 	[string]$txtOutputFile,
 	[string]$httpOutputUrl,
@@ -14,9 +15,8 @@ Param(
 	[switch]$syncAD,
 	[switch]$resumeScan,
 	[switch]$newScan,
-	[switch]$homes,
-	[switch]$includeConfig,
-	[switch]$profiles
+	[switch]$includeConfig
+
 	
 )
 
@@ -24,9 +24,14 @@ Param(
 [xml]$Config = Get-Content "config.ioc-hunt.xml"
 
 ## If the flag wasn't specified, use the value from the config
-if(!$txtOutputFile){$txtOutputFile = $Config.Settings.Global.textOutputFile}
-if(!$httpOutputUrl){$httpOutputUrl = $Config.Settings.Global.httpoutputUrl}
-if(!$sqlConnectString){$sqlConnectString = $Config.Settings.Global.sqlConnectString}
+if($txtOutputFile){$task_args += " -txtOutputFile " + $txtOutputFile }
+else{$task_args += " -txtOutputFile " + $Config.Settings.Global.textOutputFile }
+if($httpOutputUrl){$task_args += " -httpOutputUrl " + $httpOutputUrl }
+else {$task_args += " -httpOutputUrl " +  $Config.Settings.Global.httpOutputUrl }
+if($sqlConnectString){$task_args += " -sqlConnectString " + $sqlConnectString }
+else {$task_args += " -sqlConnectString " + $Config.Settings.Global.sqlConnectString}
+if($includeConfig){$task_args += " -readConfig True "}
+#$fileCopySleep = 5
 
 
 
@@ -112,7 +117,7 @@ if($resumeScan){
 
 ## The job to copy and run the script on each remote host, called from below
 $perHostJob = {
-	param($hostname,$cwd,$remote_basedir,$task,$txtOutputFile,$sqlConnectString,$httpOutputUrl,$includeConfig,$Config)
+	param($hostname,$cwd,$remote_basedir,$task,$task_args)
 	#write-host "Checking dependencies for task $task"
 	$remote_task = $task.split('\')[-1]
 	$dependencies = (Invoke-Expression "$cwd\tasks\$task -dependencies").split(",")
@@ -130,9 +135,10 @@ $perHostJob = {
 		Copy-Item "$cwd\tasks\$task" -Destination \\$hostname\c`$\$remote_basedir\$remote_task -force
 		#wmic /NODE:"$hostname" process call create "powershell set-executionpolicy unrestricted" 2> $null
 		write-host "$hostname is online: running" -foregroundcolor "green"
+		write-host "DEBUG $task_args"
 		## We sleep here to allow time for the file copy to complete
-		Start-Sleep $Config.Settings.Global.fileCopySleep
-		Invoke-WmiMethod win32_process -computername $hostname -name create -argumentlist "powershell -ExecutionPolicy Bypass -file C:\$remote_basedir\$remote_task -txtOutputFile `"$txtOutputFile`" -sqlConnectString `"$sqlConnectString`" -httpOutputUrl `"$httpOutputUrl`" -readConfig $includeConfig"
+		Start-Sleep 5
+		Invoke-WmiMethod win32_process -computername $hostname -name create -argumentlist "powershell -ExecutionPolicy Bypass -file C:\$remote_basedir\$remote_task $task_args"
 		## If ps remoting was enabled we could use these instead of above
 		#Invoke-Command -Computer $hostname -ScriptBlock { param ($cwd); Invoke-Expression "$cwd\tasks\$task" } -ArgumentList $cwd 
 		 Add-Content "$cwd\computers_completed.txt" "$hostname`n "
@@ -158,7 +164,7 @@ foreach ($hostname in $hostnames){
 		elseif ($ignore_hosts.Contains($hostname)) {}
 		else {
 			write-host "$hostname" -foregroundcolor "magenta"
-			Start-Job $perHostJob -ArgumentList $hostname, $cwd, $remote_basedir, $task, $txtOutputFile, $sqlConnectString, $httpOutputUrl, $includeConfig, $Config
+			Start-Job $perHostJob -ArgumentList $hostname, $cwd, $remote_basedir, $task, $task_args
 			$count++
 			## You can throttle performance/memory usage here by adjusting the number of hosts started in a given amount of time. 
 			if ($count -gt $Config.Settings.Global.hostBatchSize) {

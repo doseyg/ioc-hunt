@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <Settings>
  <Global>
-	<sqlConnectString>Data Source=tcp:10.1.10.1;Database=IOC-hunt;Integrated Security=false;UID=hash_user;Password=password;</sqlConnectString>
+	<sqlConnectString>"Data Source=tcp:10.1.10.1;Database=IOC-hunt;Integrated Security=false;UID=hash_user;Password=password;"</sqlConnectString>
 	<textOutputFile>C:\logfile-$hostname.log</textOutputFile>
 	<httpOutputUrl>http://webserver</httpOutputUrl>
 	<excludeHostnamePattern>*-*-*</excludeHostnamePattern>
