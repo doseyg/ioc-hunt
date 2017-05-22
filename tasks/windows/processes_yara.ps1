@@ -121,7 +121,7 @@ foreach ($process in $processes) {
 	## Ouput to HTTP
 	if ($httpOutputUrl){
 		#Invoke-WebRequest "$httpOutput?$output"
-		$urloutput =  [System.Convert]::ToBase64String([System.Text.Encoding]::UNICODE.GetBytes($output))
+		$urloutput = [System.Convert]::ToBase64String([System.Text.Encoding]::UNICODE.GetBytes($output))
 		$request = [System.Net.WebRequest]::Create("http://$httpOutput/`?task_process_scan=$urloutput");
 		$resp = $request.GetResponse();
 	}
