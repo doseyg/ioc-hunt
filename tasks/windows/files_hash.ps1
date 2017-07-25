@@ -29,6 +29,8 @@ if($sqlConnectString -eq $false){$sqlConnectString = $null}
 if($readConfig -eq $true){
 	## Get configuration from XML file
 	[xml]$Config = Get-Content "config.ioc-hunt.xml"
+	if(!$?){ #Failed to read configuration, no point in continuing 
+		exit; }
 	
 	## Map and script specific variables
 	$filePath = $Config.Settings.Tasks.files_hash.filePath
@@ -83,6 +85,7 @@ if($yara){
 
 
 $main_task = {
+	param($filePath,$maxFileSize,$yara_available,$txtOutputFile,$httpOutputUrl,$sqlConnectString);
 	## Search for specified files in $filePath
 	$searchResults = (Get-ChildItem -Recurse -Force $filePath -ErrorAction SilentlyContinue | Where-Object { !($_.Attributes -match "ReparsePoint") -and ( $_.extension -eq ".exe" `
 	        -or $_.extension -eq ".dll" `
@@ -152,7 +155,7 @@ $main_task = {
 		write-host "DEBUG working on profiles"
 		$profiles = Get-ChildItem $profilePath | ?{ $_.PSIsContainer } | Select-Object FullName
 		foreach($filepath in $profiles){
-			&main_task;
+			&main_task($filePath,$maxFileSize,$yara_available,$txtOutputFile,$httpOutputUrl,$sqlConnectString);
 			Start-Sleep 5;
 		}
 	}
@@ -162,13 +165,13 @@ $main_task = {
 		write-host "DEBUG working on homes"
 		$homes = Get-ChildItem $homePath | ?{ $_.PSIsContainer } | Select-Object FullName
 		foreach($filepath in $homes){
-			&main_task;
+			&main_task($filePath,$maxFileSize,$yara_available,$txtOutputFile,$httpOutputUrl,$sqlConnectString);
 			Start-Sleep 5;
 		}
 	}
  }
 ## Run the searching and hashing
-&$main_task
+&$main_task($filePath,$maxFileSize,$yara_available,$txtOutputFile,$httpOutputUrl,$sqlConnectString)
 
   
  ## Close the database connection
