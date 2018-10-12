@@ -1,0 +1,37 @@
+USE [ioc-hunt]
+GO
+
+/****** Object:  Table [dbo].[services]  ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+SET ANSI_PADDING ON
+GO
+
+CREATE TABLE [dbo].[services](
+	[ID] [uniqueidentifier] NOT NULL,
+	[datetime] [datetime] NOT NULL,
+	[hostname] [varchar](255) NOT NULL,
+	[servicename] [varchar](255) NOT NULL,
+	[filename] [nvarchar](max) NOT NULL,
+	[description] [nvarchar](max) NULL,
+	[state] [varchar](32) NOT NULL,
+    [runas] [varchar](max) NOT NULL,
+	[md5] [varchar](32) NULL,
+	[yara_result] [nvarchar](max) NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+ALTER TABLE [dbo].[services] ADD  CONSTRAINT [DF_services_ID]  DEFAULT (newsequentialid()) FOR [ID]
+GO
+
+ALTER TABLE [dbo].[services] ADD  CONSTRAINT [DF_services_datetime]  DEFAULT (getdate()) FOR [datetime]
+GO
+
