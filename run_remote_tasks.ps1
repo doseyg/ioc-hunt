@@ -1,8 +1,8 @@
 ###############################################################
 ## Glen Dosey <doseyg@r-networks.net>
-## March 9 2017
+## May 19 2017
 ## https://github.com/doseyg/ioc-hunt
-## This is for powershell v2 on Windows 7,8 and 10 and should work out of the box.  
+## This is for powershell v2 on Windows 7,8 and 10 and should work out of the box.  
 ## 
 
 Param( 
@@ -13,6 +13,7 @@ Param(
 	[string]$httpOutputUrl,
 	[string]$sqlConnectString,
 	[switch]$syncAD,
+	[switch]$useSSH,
 	[switch]$resumeScan,
 	[switch]$newScan,
 	[switch]$includeConfig
@@ -43,6 +44,18 @@ if($syncAD -eq $true){
 	else {
 		write-host "Missing ActiveDirectory Module.";
 		write-host "Please install the Active Directory Modules for Windows Powershell from the Remote Server Admin Tools";
+		exit;
+	}
+}
+
+## You must have "Posh-SSH" from the Powershell Gallery installed on the workstation running
+if($useSSH -eq $true){
+	if (Get-Module -ListAvailable -Name Posh-SSH) {
+		Import-Module Posh-SSH;
+	}
+	else {
+		write-host "Missing Posh-SSH Module.";
+		write-host "Please install the Posh-SSH Module for Windows Powershell from the Powershell Gallery";
 		exit;
 	}
 }
@@ -152,6 +165,16 @@ $perHostJob = {
 	}
 }
 
+#If UseSSH was specified, this job is run for each host. This is not tested and probably needs more code to work
+$perHostSSHJob = {
+	param($hostname,$cwd,$remote_basedir,$task,$task_args,$username)
+	New-SSHSession -ComputerName "$hostname" -Credential (Get-Credential $username)
+	$ssh-index = Get-SSHSession -ComputerName $hostname
+	$command = Get-Content "$cwd\tasks\$task"
+	Invoke-SSHCommand -Index $ssh-index -Command "$task"
+	Remove-SSHSession -Index $ssh-index 
+}
+
 ## Loop through every host, creating a seperate job per host to copy and execute the script
 foreach ($hostname in $hostnames){
 	if ($completed -contains $hostname) {
@@ -164,7 +187,8 @@ foreach ($hostname in $hostnames){
 		elseif ($ignore_hosts.Contains($hostname)) {}
 		else {
 			write-host "$hostname" -foregroundcolor "magenta"
-			Start-Job $perHostJob -ArgumentList $hostname, $cwd, $remote_basedir, $task, $task_args
+			if($useSSH -eq $true){Start-Job $perHostSSHJob -ArgumentList $hostname, $cwd, $remote_basedir, $task, $task_args}
+			else{Start-Job $perHostJob -ArgumentList $hostname, $cwd, $remote_basedir, $task, $task_args}
 			$count++
 			## You can throttle performance/memory usage here by adjusting the number of hosts started in a given amount of time. 
 			if ($count -gt $Config.Settings.Global.hostBatchSize) {
