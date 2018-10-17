@@ -15,7 +15,7 @@ CREATE TABLE [dbo].[indicators](
 	[ID] [uniqueidentifier] NOT NULL,
 	[Source] [nvarchar](1024) NULL,
 	[Type] [varchar](128) NULL,
-	[Hostname] [varchar](255) NOT NULL,
+	[Hostname] [varchar](255) NULL,
 	[File_Name] [nvarchar](1024) NULL,
 	[File_Path] [nvarchar](1024) NULL,
 	[Device_Path] [nvarchar](1024) NULL,
@@ -29,13 +29,13 @@ CREATE TABLE [dbo].[indicators](
 	[Modified_Time] [datetime] NULL,
 	[Accessed_Time] [datetime] NULL,
 	[Created_Time] [datetime] NULL,
-	[Process_Name] [varchar](255) NOT NULL,
-	[PID] [varchar](32) NOT NULL,
+	[Process_Name] [varchar](255) NULL,
+	[PID] [varchar](32) NULL,
 	[Creation_Time] [datetime] NULL,
-	[Parent_PID] [varchar](32) NOT NULL,
-	[File_Version] [nvarchar](255) NOT NULL,
-	[Description] [nvarchar](max) NOT NULL,
-	[Product] [nvarchar](max) NOT NULL,
+	[Parent_PID] [varchar](32) NULL,
+	[File_Version] [nvarchar](255) NULL,
+	[Description] [nvarchar](max) NULL,
+	[Product] [nvarchar](max) NULL,
 	[Yara_Result] [nvarchar](max) NULL
 ) ON [PRIMARY]
 
