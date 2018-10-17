@@ -12,9 +12,12 @@ Param(
 	[string]$txtOutputFile,
 	[string]$httpOutputUrl,
 	[string]$sqlConnectString,
+    [string]$readConfig,
 	[switch]$dependencies,
 	[switch]$cleanup
 )
+
+Set-Location "C:\Windows\temp"
 
 ## Because testing of FALSE with if returns true, set it to $null instead. This is an ugly hack, maybe someday I will have a cleaner solution
 if($txtOutputFile -eq 'FALSE'){$txtOutputFile = $null}
@@ -24,6 +27,7 @@ if($sqlConnectString -eq 'FALSE'){$sqlConnectString = $null}
 if($readConfig){
 	## Get configuration from XML file
 	[xml]$Config = Get-Content "config.ioc-hunt.xml"
+    write-host "DEBUG: Using configuration file"
 
 	## If the flag wasn't specified, use the value from the config
 	if(!$txtOutputFile){$txtOutputFile = $Config.Settings.Global.textOutputFile}
@@ -75,7 +79,7 @@ foreach ($service in $services){
 		}
 		## Output to database
 		if($sqlConnectString){
-			$cmd.commandtext = "INSERT INTO hashes (hostname,servicename,filename,description,state,runas) VALUES('{0}','{1}','{2}','{3}','{4}','{5}','{6}')" -f $computername,$servicename,$filename,$description,$state,$runas
+			$cmd.commandtext = "INSERT INTO services (hostname,servicename,filename,description,state,runas) VALUES('{0}','{1}','{2}','{3}','{4}','{5}')" -f $computername,$servicename,$filename,$description,$state,$runas
 			$cmd.executenonquery()
 		}
 		#If no outputs are defined, write to stdout
@@ -94,4 +98,3 @@ foreach ($service in $services){
  if($cleanup){
 	remove-Item "$cwd\services.ps1"
  }
-
