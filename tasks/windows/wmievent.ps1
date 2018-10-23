@@ -12,6 +12,7 @@ Param(
 	[string]$txtOutputFile,
 	[string]$httpOutputUrl,
 	[string]$sqlConnectString,
+	[string]$syslogServer,
     [string]$readConfig,
 	[switch]$dependencies,
 	[switch]$cleanup
@@ -23,6 +24,7 @@ Set-Location "C:\Windows\temp"
 if($txtOutputFile -eq 'FALSE'){$txtOutputFile = $null}
 if($httpOutputUrl -eq 'FALSE'){$httpOutputUrl = $null}
 if($sqlConnectString -eq 'FALSE'){$sqlConnectString = $null}
+if($syslogServer -eq 'FALSE'){$syslogServer = $null}
 
 if($readConfig){
 	## Get configuration from XML file
@@ -33,6 +35,7 @@ if($readConfig){
 	if(!$txtOutputFile){$txtOutputFile = $Config.Settings.Global.textOutputFile}
 	if(!$httpOutputUrl){$httpOutputUrl = $Config.Settings.Global.httpoutputUrl}
 	if(!$sqlConnectString){$sqlConnectString = $Config.Settings.Global.sqlConnectString}
+	if(!$syslogServer){$syslogServer = $Config.Settings.Global.syslogServer; $syslogPort = $Config.Settings.Global.syslogPort; $syslogFacility = $Config.Settings.Global.syslogFacility}
 }
 
 $computerName = Get-Content env:computername
@@ -53,7 +56,16 @@ if ($sqlConnectString){
 	$cmd = New-Object System.Data.SqlClient.SqlCommand
 	$cmd.connection = $conn
 }
-
+## Setup a connection to the syslgo server
+if ($syslogServer){
+	$syslogSeverity = '1'
+	$timestamp = Get-Date -Format "MMM dd HH:mm:ss"
+	$priority = ([int]$syslogFacility * 8) + [int]$syslogSeverity
+	$Encoding = [System.Text.Encoding]::ASCII
+	$TCPClient = New-Object System.Net.Sockets.TcpClient
+	$TCPClient.Connect($syslogServer, $syslogPort)
+	#$syslogStream = $TCPClient.GetStream()
+}
 
 
 ## DO whatever collection, and store the results in $output
@@ -64,7 +76,7 @@ ForEach ($NameSpace in "root\subscription","root\default") {
 	$bindings = Get-WmiObject -Namespace $NameSpace -Query "select * from __FilterToConsumerBinding" 
 	foreach($items in $consumers,$filters,$bindings){
 		foreach($item in $items){
-			echo "Item is: $item"
+			#echo "Item is: $item"
 			$name = $item.Name
 			$class = $item.__Class
 			$path = $item.__Path
@@ -73,26 +85,42 @@ ForEach ($NameSpace in "root\subscription","root\default") {
 			$consumer = $item.Consumer
 			$commandlinetemplate = $item.CommandLineTemplate
 			$output = "$computername,$name,$class,$path,$query,$filter,$consumer,$commandlinetemplate"
-			echo $output
+			$json = "{ host: $computername, Name: $name, Class: $class, Path: $path, WmiQuery: $query, WmiFilter: $filter, WmiConsumer: $consumer, WmiCommandLineTemplate: $commandlinetemplate }"
+			#$json = $item | ConvertTo-Json
+			#echo $json
 			
 			if($txtOutputFile){
-			Add-Content $txtOutputFile $output
-		}
-		## Ouput to HTTP
-		if ($httpOutputUrl){
-			#Invoke-WebRequest "$httpOutput?$output"
-			$urloutput =  [System.Convert]::ToBase64String([System.Text.Encoding]::UNICODE.GetBytes($output))
-			$request = [System.Net.WebRequest]::Create("$httpOutputUrl/$urloutput");
-			$resp = $request.GetResponse();
-		}
-		## Output to database
-		if($sqlConnectString){
-			$cmd.commandtext = "INSERT INTO wmievent (hostname,name,class,path,query,filter,consumer,commandlinetemplate) VALUES('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}')" -f $computername,$name,$class,$path,$query,$filter,$consumer,$commandlinetemplate
-			$cmd.executenonquery()
-		}
-		#If no outputs are defined, write to stdout
-		if($txtOutputFile -or $httpOutputUrl -or $sqlConnectString){}
-		else { write-host $output }
+				#Write-Host "Debug: writing to text file"
+				Add-Content $txtOutputFile $output
+			}
+			## Ouput to HTTP
+			if ($httpOutputUrl){
+				#Write-Host "Debug: submitting to website"
+				#Invoke-WebRequest "$httpOutput?$output"
+				$urloutput =  [System.Convert]::ToBase64String([System.Text.Encoding]::UNICODE.GetBytes($output))
+				$request = [System.Net.WebRequest]::Create("$httpOutputUrl/$urloutput");
+				$resp = $request.GetResponse();
+			}
+			## Output to database
+			if($sqlConnectString){
+				#Write-Host "Debug: inserting into database"
+				$cmd.commandtext = "INSERT INTO wmievent (hostname,name,class,path,query,filter,consumer,commandlinetemplate) VALUES('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}')" -f $computername,$name,$class,$path,$query,$filter,$consumer,$commandlinetemplate
+				$cmd.executenonquery()
+			}
+			if($syslogServer){
+				#Write-Host "Debug: sending to syslog server"
+				$syslogMessage = "<{0}>{1} {2} {3}" -f $priority, $timestamp, $computerName, $json
+				$ByteSyslogMessage = $Encoding.GetBytes($syslogMessage)
+				$TCPClient = New-Object System.Net.Sockets.TcpClient
+				$TCPClient.Connect($syslogServer, $syslogPort)
+				$syslogStream = $TCPClient.GetStream()
+				$syslogStream.Write($ByteSyslogMessage, 0, $ByteSyslogMessage.Length)
+				$syslogStream.Close()
+				$TCPClient.Close()
+			}
+			#If no outputs are defined, write to stdout
+			if($txtOutputFile -or $httpOutputUrl -or $sqlConnectString -or $syslogServer){}
+			else { write-host $output }
 		}
 	}
 }
@@ -103,8 +131,13 @@ ForEach ($NameSpace in "root\subscription","root\default") {
 	$conn.close()
  }
  
+ ## Close the syslog connection
+ if($syslogServer){
+	#$syslogStream.Close()
+	$TCPClient.Close()
+}
 
  ## If the cleanup swicth was supplied, delete this file and any dependencies
  if($cleanup){
-	remove-Item "$cwd\services.ps1"
+	remove-Item "$cwd\wmievent.ps1"
  }
