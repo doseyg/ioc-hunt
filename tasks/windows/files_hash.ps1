@@ -21,6 +21,8 @@ Param(
 	[string]$maxFileSize = '15000000'
 )
 
+Set-Location "C:\Windows\temp\"
+
 ## Because testing of FALSE with if returns true, set it to $null instead. This is an ugly hack, maybe someday I will have a cleaner solution
 if($txtOutputFile -eq $false){$txtOutputFile = $null}
 if($httpOutputUrl -eq $false){$httpOutputUrl = $null}
@@ -171,7 +173,7 @@ $main_task = {
 	}
  }
 ## Run the searching and hashing
-&$main_task($filePath,$maxFileSize,$yara_available,$txtOutputFile,$httpOutputUrl,$sqlConnectString)
+&$main_task($filePath, $maxFileSize, $yara_available, $txtOutputFile, $httpOutputUrl, $sqlConnectString)
 
   
  ## Close the database connection
