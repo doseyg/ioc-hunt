@@ -20,6 +20,8 @@ Param(
 	[switch]$cleanup
 )
 
+Set-Location "C:\Windows\temp\"
+
 ## Because testing of FALSE with if returns true, set it to $null instead. This is an ugly hack, maybe someday I will have a cleaner solution
 if($txtOutputFile -eq $false){$txtOutputFile = $null}
 if($httpOutputUrl -eq $false){$httpOutputUrl = $null}
