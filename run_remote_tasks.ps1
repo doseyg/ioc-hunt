@@ -22,18 +22,18 @@ Param(
 )
 
 ## Get configuration from XML file
-[xml]$Config = Get-Content "config.ioc-hunt.xml"
-
-## If the flag wasn't specified, use the value from the config
-if($txtOutputFile){$task_args += " -txtOutputFile " + $txtOutputFile }
-else{$task_args += " -txtOutputFile " + $Config.Settings.Global.textOutputFile }
-if($httpOutputUrl){$task_args += " -httpOutputUrl " + $httpOutputUrl }
-else {$task_args += " -httpOutputUrl " +  $Config.Settings.Global.httpOutputUrl }
-if($sqlConnectString){$task_args += " -sqlConnectString " + $sqlConnectString }
-else {$task_args += " -sqlConnectString " + $Config.Settings.Global.sqlConnectString}
-if($includeConfig){$task_args += " -readConfig True "}
-#$fileCopySleep = 5
-
+if($includeConfig){
+	$task_args += " -readConfig True "
+	[xml]$Config = Get-Content "config.ioc-hunt.xml"
+	$hostBatchSize = $Config.Settings.Global.hostBatchSize
+	$hostBatchDelay = $Config.Settings.Global.hostBatchDelay
+}
+else{
+	$hostBatchSize = 30; $hostBatchDelay = 15;
+	if($txtOutputFile){$task_args += " -txtOutputFile " + $txtOutputFile }
+	if($httpOutputUrl){$task_args += " -httpOutputUrl " + $httpOutputUrl }
+	if($sqlConnectString){$task_args += " -sqlConnectString " + $sqlConnectString }
+}
 
 
 ## You must have "Active Directory Modules for Windows Powershell" from Remote Server Admin Tools installed on the workstation running this
@@ -52,6 +52,8 @@ if($syncAD -eq $true){
 if($useSSH -eq $true){
 	if (Get-Module -ListAvailable -Name Posh-SSH) {
 		Import-Module Posh-SSH;
+		Write-Host "Enter your SSH Credential in the pop-up window"
+		$sshCred = Get-Credential
 	}
 	else {
 		write-host "Missing Posh-SSH Module.";
@@ -62,6 +64,7 @@ if($useSSH -eq $true){
 
 ## Figure out the current working directory
 $cwd = Convert-Path "."
+#$ScriptPath = Split-Path $MyInvocation.MyCommand.Path
 $date = Get-Date -format yyyyMMddHHmmss
 Start-Transcript -path "$cwd\log.$date.txt"
 
@@ -86,7 +89,7 @@ else{
 }
 
 
-
+if(($syncAD ) -and ($resumeScan)){Write-Host "It doesn't make sense to resume a scan and also sync all computers from AD. Pick one."; Stop-Transcript; exit;}
 ## Read in computers from Active Directory or a text file.
 if ($syncAD) {
 	write-host "Starting a new scan."
@@ -145,10 +148,11 @@ $perHostJob = {
 			write-host "Copying config.ioc-hunt.xml to $remote_basedir on $hostname"
 			Copy-Item "$cwd\config.ioc-hunt.xml" -Destination "\\$hostname\c`$\$remote_basedir\config.ioc-hunt.xml" -force
 		}
+		write-host "Copying $cwd\tasks\$task to $remote_basedir on $hostname"
 		Copy-Item "$cwd\tasks\$task" -Destination \\$hostname\c`$\$remote_basedir\$remote_task -force
 		#wmic /NODE:"$hostname" process call create "powershell set-executionpolicy unrestricted" 2> $null
 		write-host "$hostname is online: running" -foregroundcolor "green"
-		write-host "DEBUG $task_args"
+		write-host "DEBUG powershell -ExecutionPolicy Bypass -file C:\$remote_basedir\$remote_task $task_args"
 		## We sleep here to allow time for the file copy to complete
 		Start-Sleep 5
 		Invoke-WmiMethod win32_process -computername $hostname -name create -argumentlist "powershell -ExecutionPolicy Bypass -file C:\$remote_basedir\$remote_task $task_args"
@@ -167,12 +171,10 @@ $perHostJob = {
 
 #If UseSSH was specified, this job is run for each host. This is not tested and probably needs more code to work
 $perHostSSHJob = {
-	param($hostname,$cwd,$remote_basedir,$task,$task_args,$username)
-	New-SSHSession -ComputerName "$hostname" -Credential (Get-Credential $username)
-	$ssh-index = Get-SSHSession -ComputerName $hostname
-	$command = Get-Content "$cwd\tasks\$task"
-	Invoke-SSHCommand -Index $ssh-index -Command "$task"
-	Remove-SSHSession -Index $ssh-index 
+	param($hostname,$cwd,$task,[System.Management.Automation.Credential()]$sshCred)
+	write-host "Attempting perHostSSHJob for $hostname"
+	$json = powershell $cwd\tasks\$task -hostname $hostname -sshCred $sshCred
+	#write-host $json
 }
 
 ## Loop through every host, creating a seperate job per host to copy and execute the script
@@ -183,19 +185,19 @@ foreach ($hostname in $hostnames){
 	}
 	if ($hostname -ne "") {
 		## This line skips any pattern of hostnames, which could be servers in most organizations. Tailor to your needs
-		if ($hostname -like $Config.Settings.Global.excludeHostnamePattern ) { }
-		elseif ($ignore_hosts.Contains($hostname)) {}
+		if ($hostname -like $Config.Settings.Global.excludeHostnamePattern ) { Write-Host "Skipping host $hostname based on excludeHostnamePattern in config"}
+		elseif ($ignore_hosts.Contains($hostname)) {Write-Host "Skipping host $hostname because it is listed in computers_ignore.txt file."}
 		else {
 			write-host "$hostname" -foregroundcolor "magenta"
-			if($useSSH -eq $true){Start-Job $perHostSSHJob -ArgumentList $hostname, $cwd, $remote_basedir, $task, $task_args}
+			if($useSSH -eq $true){Start-Job $perHostSSHJob -ArgumentList $hostname, $cwd, $task, $sshCred}
 			else{Start-Job $perHostJob -ArgumentList $hostname, $cwd, $remote_basedir, $task, $task_args}
 			$count++
 			## You can throttle performance/memory usage here by adjusting the number of hosts started in a given amount of time. 
-			if ($count -gt $Config.Settings.Global.hostBatchSize) {
-				write-host "Sleeping for $Config.Settings.Global.hotsBatchDelay seconds after trying $Config.Settings.Global.hostBatchSize hosts..."
+			if ($count -gt $hostBatchSize) {
+				write-host "Sleeping for $hostBatchDelay seconds after trying $hostBatchSize hosts..."
 				$sleepcount = 0
 				$count = 0
-				while ($sleepcount -lt $Config.Settings.Global.hotsBatchDelay) {
+				while ($sleepcount -lt $hostBatchDelay) {
 					$results = Get-Job -State "Completed" | Receive-Job 2>&1
 					if ($results) { write-host "$results`n" -foregroundcolor "gray" }
 					Get-Job -state "Completed" | remove-job
@@ -225,6 +227,8 @@ While (Get-Job -State "Running") {
 	 Start-Sleep 1
 	 write-host "`b-" -NoNewLine
 	 $count++
+	 $results = Get-Job -State "Completed" | Receive-Job 2>&1
+	 if ($results) { write-host "$results`n" -foregroundcolor "gray" }
 	 if($count -gt 61){break}
 }
 
