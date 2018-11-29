@@ -124,4 +124,7 @@ if($cleanup){
     #Invoke-Command -Computer $computerName -ScriptBlock { remove-Item c:\autorunsc.exe }
 	remove-Item $cwd\autorunsc.exe
 	remove-Item $cwd\autoruns.ps1
+	if($readConfig){
+		remove-item "$cwd\config.ioc-hunt.xml"
+	}
 }

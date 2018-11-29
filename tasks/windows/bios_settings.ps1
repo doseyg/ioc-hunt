@@ -96,4 +96,7 @@ else { write-host $output }
  ## If the cleanup swicth was supplied, delete this file and any dependencies
  if($cleanup){
 	remove-Item "$cwd\bios.ps1"
+	if($readConfig){
+		remove-item "$cwd\config.ioc-hunt.xml"
+	}
  }

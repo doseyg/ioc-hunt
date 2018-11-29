@@ -29,7 +29,7 @@ if($syslogServer -eq 'FALSE'){$syslogServer = $null}
 if($readConfig){
 	## Get configuration from XML file
 	[xml]$Config = Get-Content "config.ioc-hunt.xml"
-    write-host "DEBUG: Using configuration file"
+    #write-host "DEBUG: Using configuration file"
 
 	## If the flag wasn't specified, use the value from the config
 	if(!$txtOutputFile){$txtOutputFile = $Config.Settings.Global.textOutputFile}
@@ -140,4 +140,7 @@ ForEach ($NameSpace in "root\subscription","root\default") {
  ## If the cleanup swicth was supplied, delete this file and any dependencies
  if($cleanup){
 	remove-Item "$cwd\wmievent.ps1"
+	if($readConfig){
+		remove-item "$cwd\config.ioc-hunt.xml"
+	}
  }

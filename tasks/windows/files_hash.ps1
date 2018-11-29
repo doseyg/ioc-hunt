@@ -188,4 +188,7 @@ $main_task = {
 	remove-Item "$cwd\yara32.exe"
 	remove-Item "$cwd\rules.yar"
 	remove-Item "$cwd\files_hash.ps1"
+	if($readConfig){
+		remove-item "$cwd\config.ioc-hunt.xml"
+	}
  }
