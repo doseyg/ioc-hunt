@@ -1,7 +1,8 @@
 # Using run_remote_tasks
 
 The most common example looks like this: 
-.\run_remote_tasks.ps1 -syncAD -includeConfig -task windows\services.ps1 -task_args " -cleanup "
+
+	.\run_remote_tasks.ps1 -syncAD -includeConfig -task windows\services.ps1 -task_args " -cleanup "
 
 
 
@@ -41,8 +42,14 @@ Tells the tasks to write the results to this file on the REMOTE host. The file i
 ### -httpOutputUrl <URL>
 This isn't fully supported. Tells the task to write output to a URL. The URL is inserted into http://$httpOutputUrl/?task_process_scan=$urloutput. You'll probably need to edit code for this to work how you want. SSL and TLS are not supported.
 
+### -useWMI (DEFAULT)
+Use WMI to execute remote commands. This flag is assumed if you don't specify a different method.
+
 ### -usePsExec
 Use PsExec to execute remote commands instead of WMI. PsExec.exe must be in the dependencies folder. 
+
+### -useWinRM
+Use WinRM to execute remote commands instead of WMI. 
 
 ### -useSSH
 Use SSH to execute remote commands instead of WMI. For Linux and Cisco devices.  Posh-SSH must be installed.
