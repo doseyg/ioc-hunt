@@ -1,9 +1,17 @@
 # Using run_remote_tasks
 
+The most common example looks like this: 
+.\run_remote_tasks.ps1 -syncAD -includeConfig -task windows\services.ps1 -task_args " -cleanup "
+
+
+
 ## Flags
 
 ### -task (REQUIRED)
 Specify which task to run. Will list available tasks and exit if no option is supplied. The "tasks" are the powershell scripts in the tasks folder. An example task is "windows\files_hash.ps1"
+
+### -task_args <ARGS>
+Additional arguments to pass to the script. Common example is " -cleanup "
 
 ### -includeConfig
 Tells the script to copy the ioc-hunt.config.xml file over to every host the script is run on. Passes the -readConfig option the called task
@@ -32,6 +40,12 @@ Tells the tasks to write the results to this file on the REMOTE host. The file i
 
 ### -httpOutputUrl <URL>
 This isn't fully supported. Tells the task to write output to a URL. The URL is inserted into http://$httpOutputUrl/?task_process_scan=$urloutput. You'll probably need to edit code for this to work how you want. SSL and TLS are not supported.
+
+### -usePsExec
+Use PsExec to execute remote commands instead of WMI. PsExec.exe must be in the dependencies folder. 
+
+### -useSSH
+Use SSH to execute remote commands instead of WMI. For Linux and Cisco devices.  Posh-SSH must be installed.
 
 
 ## Files
