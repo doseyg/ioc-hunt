@@ -14,7 +14,7 @@ Open SSMS and click connect
 
 Right click on databases and choose new database.
 
-Name it "IOC-Hunt". under Options set Containment to partial, then click OK to create it.
+Name it "ioc-hunt". under Options set Containment to partial, then click OK to create it.
 
 ## Table Creation
 
@@ -33,25 +33,30 @@ Your SQL server must be in mixed mode for authentication. If you installed SQL e
 	reconfigure
 	go
 
-	alter database [IOC-Hunt]
+	alter database [ioc-hunt]
 	set containment = partial
 	go 
 
 Create a local (non-integrated) user named hash_user. Type this in the Query Window and then hit execute
-	use [IOC-hunt]
+
+	use [ioc-hunt]
 	GO
 	CREATE USER hash_user WITH PASSWORD = 'Password1'
 	GO
 
 Grant that user privileges to connect and insert.
-	GRANT INSERT ON [dbo].[indicators] TO hash_user
-	GRANT INSERT ON [dbo].[files] TO hash_user
-	GRANT INSERT ON [dbo].[processes] TO hash_user
+
 	GRANT INSERT ON [dbo].[autoruns] TO hash_user
+	GRANT INSERT ON [dbo].[bios] TO hash_user
+	GRANT INSERT ON [dbo].[files] TO hash_user
+	GRANT INSERT ON [dbo].[wmievent] TO hash_user
+	GRANT INSERT ON [dbo].[processes] TO hash_user
+	GRANT INSERT ON [dbo].[services] TO hash_user
+	GRANT INSERT ON [dbo].[wmievent] TO hash_user
 
 Grant your users (who can be AD integrated) full permissions on ioc-hunt.
 
 ## SQL Connection String
 
 Example:
-Data Source=tcp:10.1.10.1;Database=IOC-hunt;Integrated Security=false;UID=hash_user;Password=Password1;
+Data Source=tcp:10.1.10.1;Database=ioc-hunt;Integrated Security=false;UID=hash_user;Password=Password1;
