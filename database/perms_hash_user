@@ -1,0 +1,14 @@
+use [ioc-hunt]
+GO
+CREATE USER hash_user WITH PASSWORD = 'Password1'
+GO
+
+
+
+GRANT INSERT ON [dbo].[autoruns] TO hash_user
+GRANT INSERT ON [dbo].[bios] TO hash_user
+GRANT INSERT ON [dbo].[files] TO hash_user
+GRANT INSERT ON [dbo].[wmievent] TO hash_user
+GRANT INSERT ON [dbo].[processes] TO hash_user
+GRANT INSERT ON [dbo].[services] TO hash_user
+GRANT INSERT ON [dbo].[wmievent] TO hash_user
