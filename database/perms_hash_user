@@ -12,3 +12,4 @@ GRANT INSERT ON [dbo].[wmievent] TO hash_user
 GRANT INSERT ON [dbo].[processes] TO hash_user
 GRANT INSERT ON [dbo].[services] TO hash_user
 GRANT INSERT ON [dbo].[wmievent] TO hash_user
+GRANT INSERT ON [dbo].[routes] TO hash_user
