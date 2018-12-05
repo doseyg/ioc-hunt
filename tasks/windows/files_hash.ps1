@@ -14,6 +14,9 @@ Param(
 	[switch]$yara,
 	[switch]$cleanup,
 	[switch]$dependencies,
+	[switch]$useMD5,
+	[switch]$useSHA1,
+	[switch]$useSHA256,
 	[string]$readConfig,
 	[switch]$profiles,
 	[switch]$homes,
@@ -22,6 +25,9 @@ Param(
 )
 
 Set-Location "C:\Windows\temp\"
+
+## hardcoded until doc updated
+$useMD5 = $True
 
 ## Because testing of FALSE with if returns true, set it to $null instead. This is an ugly hack, maybe someday I will have a cleaner solution
 if($txtOutputFile -eq $false){$txtOutputFile = $null}
@@ -60,7 +66,9 @@ if ($dependencies) {
 
 ## Setup some variables
 $computerName = Get-Content env:computername
-$md5 = new-object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider
+if($useMD5){ $md5 = new-object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider }
+if($useSHA1){ $sha1 = new-object -TypeName System.Security.Cryptography.SHA1CryptoServiceProvider }
+if($useSHA256){ $sha256 = new-object -TypeName System.Security.Cryptography.SHA256CryptoServiceProvider }
 $cwd = Convert-Path "."
 
 
@@ -112,12 +120,18 @@ $main_task = {
 	 foreach ($file in $searchResults) {
 	    $length = $file.length
 	    $fileName = $file.fullName
-		$hash = ""
+		$hashmd5 = ""
+		$hashsha1 = ""
+		$hashsha256 = ""
 	    if ($length -lt $maxFileSize ) {
-			## Calculate the md5 hash value
-			$hash = [System.BitConverter]::ToString($md5.ComputeHash([System.IO.File]::ReadAllBytes($fileName)))
+			## Calculate the hash value
+			if($useMD5){  $hashmd5 = [System.BitConverter]::ToString($md5.ComputeHash([System.IO.File]::ReadAllBytes($fileName)))  }
+			if($useSHA1){ $hashsha1 = [System.BitConverter]::ToString($sha1.ComputeHash([System.IO.File]::ReadAllBytes($fileName)))  }
+			if($useSHA256){ $hashsha256 = [System.BitConverter]::ToString($sha256.ComputeHash([System.IO.File]::ReadAllBytes($fileName)))  }
 			# Remove - characters from hash value
-			$hash = %{$hash -replace "-",""}
+			$hashmd5 = %{$hashmd5 -replace "-",""}
+			$hashsha1 = %{$hashsha1 -replace "-",""}
+			$hashsha256 = %{$hashsha256 -replace "-",""}
 			
 			## Run the Yara command
 			if ($yara_available){
@@ -128,7 +142,7 @@ $main_task = {
 			}
 			
 			
-			$output = "$computername,'$fileName',$hash,$length`n"
+			$output = "$computername,'$fileName',$hashmd5,$hashsha1,$hashsha256,$length,$yara_result`n"
 			## write to the local CSV file
 			if($txtOutputFile){
 				Add-Content $txtOutputFile $output
@@ -142,7 +156,7 @@ $main_task = {
 			}
 			## Insert into a database
 			if($sqlConnectString){
-				$cmd.commandtext = "INSERT INTO files (Hostname,File_Name,Hashes_MD5,Size_In_Bytes,yara_result) VALUES('{0}','{1}','{2}','{3}','{4}')" -f $computername,$fileName,$hash,$length,[string]$yara_result
+				$cmd.commandtext = "INSERT INTO files (Hostname,File_Name,Hashes_MD5,Hashes_SHA1,Hashes_SHA256,Size_In_Bytes,yara_result) VALUES('{0}','{1}','{2}','{3}','{4}','(5)','(6)')" -f $computername,$fileName,$hashmd5,$hashsha1,$hashsha256,$length,[string]$yara_result
 				$cmd.executenonquery()
 			}
 			#If no outputs are defined, write to stdout
