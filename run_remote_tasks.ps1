@@ -202,7 +202,7 @@ foreach ($hostname in $hostnames){
 	if ($hostname -ne "") {
 		## This line skips any pattern of hostnames, which could be servers in most organizations. Tailor to your needs
 		if ($hostname -like $Config.Settings.Global.excludeHostnamePattern ) { Write-Host "Skipping host $hostname based on excludeHostnamePattern in config"}
-		elseif ($ignore_hosts.Contains($hostname)) {Write-Host "Skipping host $hostname because it is listed in computers_ignore.txt file."}
+		elseif ($ignore_hosts -contains $hostname) {Write-Host "Skipping host $hostname because it is listed in computers_ignore.txt file."}
 		else {
 			write-host "$hostname" -foregroundcolor "magenta"
 			if($useSSH -eq $true){Start-Job $perHostSSHJob -ArgumentList $hostname, $cwd, $task, $sshCred}
