@@ -1,0 +1,35 @@
+USE [ioc-hunt]
+GO
+
+/****** Object:  Table [dbo].[routes]  ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+SET ANSI_PADDING ON
+GO
+
+CREATE TABLE [dbo].[routes](
+	[ID] [uniqueidentifier] NOT NULL,
+	[datetime] [datetime] NOT NULL,
+	[Hostname] [varchar](255) NOT NULL,
+	[Network] [nvarchar](max) NOT NULL,
+	[Mask] [varchar](128) NULL,
+	[NextHop] [varchar](max) NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+ALTER TABLE [dbo].[routes] ADD  CONSTRAINT [DF_files_ID]  DEFAULT (newsequentialid()) FOR [ID]
+GO
+
+ALTER TABLE [dbo].[routes] ADD  CONSTRAINT [DF_files_datetime]  DEFAULT (getdate()) FOR [datetime]
+GO
+
+　
+　
