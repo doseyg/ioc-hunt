@@ -13,34 +13,35 @@ Specify which task to run. Will list available tasks and exit if no option is su
 
 ### -task_args <ARGS>
 Additional arguments to pass to the script. Common example is " -cleanup "
+	
+### -remote_basedir
+Where to put the files on the remote host. Path without drive letter, like \windows\temp\
 
 ### -includeConfig
 Tells the script to copy the ioc-hunt.config.xml file over to every host the script is run on. Passes the -readConfig option the called task
 
 ### -homes
 
-### -httpOutputUrl <URL>
-This isn't fully supported. Tells the task to write output to a URL. The URL is inserted into http://$httpOutputUrl/?task_process_scan=$urloutput. You'll probably need to edit code for this to work how you want. SSL and TLS are not supported.
-
 ### -profiles
-
-### -remote_basedir
-Where to put the files on the remote host. Path without drive letter, like \windows\temp\
 
 ### -resumescan
 Run against the computers in computers_skipped.txt. If computers_skipped.txt does not exist, then run against computers.txt, but skip any computers in computers_completed.txt
 
-### -sqlConnectString <SQL_connect_String>
-The full SQL connection string where results should go. Each remote host will connect and upload the results, by entry. It probably makes more sense to use the config.ioc-hunt.xml file for this.
-
 ### -syncAD
 Pull a list of all computers from the Active Directory domain and append them to the computers.txt file. You probably want to truncate the computers.txt file before doing this. This requires the Active Directory Modules for Windows Powershell from the Remote Server Admin Tools
+
+## Send the results to 1 or more of the following
+
+### -sqlConnectString <SQL_connect_String>
+The full SQL connection string where results should go. Each remote host will connect and upload the results, by entry. It probably makes more sense to use the config.ioc-hunt.xml file for this.
 
 ### -txtOutputFile <File_path_name>
 Tells the tasks to write the results to this file on the REMOTE host. The file is the full path, for example c:\Windows\Temp\myfile.txt. 
 
 ### -httpOutputUrl <URL>
 This isn't fully supported. Tells the task to write output to a URL. The URL is inserted into http://$httpOutputUrl/?task_process_scan=$urloutput. You'll probably need to edit code for this to work how you want. SSL and TLS are not supported.
+	
+## Connect to host using one of the following
 
 ### -useWMI (DEFAULT)
 Use WMI to execute remote commands. This flag is assumed if you don't specify a different method.
@@ -55,7 +56,7 @@ Use WinRM to execute remote commands instead of WMI.
 Use SSH to execute remote commands instead of WMI. For Linux and Cisco devices.  Posh-SSH must be installed.
 
 
-## Files
+## Files used by IOC-Hunt
 
 ### config.ioc-hunt.xml
 This is the config file. Not every CLI flag has an equivalent config settings, and vice-versa. There are more options in the config file than CLI flags. 
