@@ -5,6 +5,6 @@ Support searching and collecting file hashes, autoruns, running processes, and Y
 
 ## Installation
 - download and install SQL Server Express 2019 edition
--- choose Basic install
--- accept all the defaults
+  -  choose Basic install
+  -  accept all the defaults
 - git clone, or download .zip from GitHub
